@@ -1,0 +1,491 @@
+==============================================================================
+ TRAVEL BILL SPLIT — FRONTEND AGENT BRIEF
+ For another AI / engineer implementing the React PWA only
+ Version: 1.0
+ Date: 2026-09-24
+ Source of truth: travel-bill-split-app-spec.txt (v1 + section 12 freeze)
+==============================================================================
+
+HOW TO USE THIS FILE
+  You are implementing the FRONTEND only.
+  Do not invent backend tables, Edge Functions, or product features that
+  are not in this brief or in travel-bill-split-app-spec.txt.
+  If the two documents disagree, the spec + section 12 invariants win.
+  Do not implement section 11 "Future Ideas".
+  Do not build the production app inside test/frontend. That folder is an
+  environment check only.
+
+CURRENT REPO (do not ignore)
+  GitHub: JustinBSG/Travel_Bill_Splitting_Web_App  (branch: main)
+  Local (Windows): F:\OneDrive\Documents\side_project\Travel_Bill_Splitting_Web_App
+  Layout:
+    test/frontend     Vite + React + TS + vite-plugin-pwa  (ENV TEST ONLY)
+    test/backend      empty / ignore
+  Test deploy (HTTPS, installable):
+    https://test-frontend.justin610810.workers.dev
+  Production frontend host target: Cloudflare Pages
+    Root directory: the REAL app folder (not /test/frontend with a leading slash)
+    Build: npm run build
+    Output: dist
+    Deploy command: EMPTY (do not use npx wrangler deploy for Pages static)
+  Base currency: HKD
+  Home timezone: Asia/Hong_Kong
+  Languages: English + Traditional Chinese (zh-Hant)
+  Audience: friend groups on iPhone Safari PWA and Android Chrome PWA
+
+WHAT THIS PRODUCT IS
+  Installable web app (PWA) for friends travelling together.
+  Each trip has members, per-date locations, expenses, and a conclusion
+  that shows who pays whom.
+  Trust model: cooperative trip members. Any member may add/edit/delete
+  any expense. Do not build per-user "only I can edit my expenses".
+
+WHAT THIS PRODUCT IS NOT (do not build)
+  Native iOS/Android (no Expo, no React Native, no Xcode, no Play Console)
+  Offline-first queue
+  Receipt OCR
+  Itemized / weighted / multi-payer splits
+  Trip budget bar
+  PDF export (CSV only)
+  PayMe / FPS payment rail
+  Multiple locations on one day
+  Next.js (stack is Vite + React + TypeScript)
+
+==============================================================================
+1. TECH STACK (FRONTEND)
+==============================================================================
+
+Required
+  - React + Vite + TypeScript
+  - react-router (or equivalent) for /login /trips /trips/:id/* /join/:token
+  - vite-plugin-pwa (manifest + generateSW)
+  - i18next (or equivalent) EN + zh-Hant
+  - @supabase/supabase-js
+  - A decimal / money library (decimal.js or similar). NEVER use JS number
+    for amounts, shares, FX multiply, or settlement.
+  - date-fns-tz or Temporal-polyfill / luxon for timezone display
+  - Web Share API where available; fallback copy-to-clipboard
+
+Env vars (Vite, public)
+  VITE_SUPABASE_URL
+  VITE_SUPABASE_ANON_KEY
+  Never put the Supabase service_role key in the frontend.
+
+Host
+  Cloudflare Pages. SPA fallback required for /join/:token.
+  Do not add a root 404.html that breaks SPA routing.
+
+PWA
+  name / short_name, theme_color, display: standalone, start_url: /
+  icons: 192 PNG + 512 PNG + maskable 512
+  apple-touch-icon + apple-mobile-web-app-capable
+  Android: beforeinstallprompt -> "Install app" button
+  iOS: first-visit banner "Tap Share, then Add to Home Screen"; hide when
+  display-mode: standalone or navigator.standalone
+  iOS login MUST use email OTP code typed in-app, never magic links
+  (magic links open Safari instead of the installed PWA)
+
+==============================================================================
+2. INFORMATION ARCHITECTURE
+==============================================================================
+
+App-level routes
+  /login
+  /trips                         My Trips + Create + Join with code
+  /join/:token                   invite link landing
+  /notifications
+  /settings                      name, language, notification toggles
+  /trips/:tripId                 trip shell (swipe / tab bar)
+
+Inside a trip, pages IN THIS ORDER
+  Overview
+  Pre-trip
+  Day 1 ... Day N                one page per trip_days.date
+  Post-trip
+  Conclusion
+
+Trip menu (not in the swipe strip)
+  Members
+  Activity Log
+  Trip Settings                  admin only
+  Export CSV
+
+Example 4-day trip 12-15 Oct:
+  Overview | Pre-trip | 12 Oct | 13 Oct | 14 Oct | 15 Oct | Post-trip | Conclusion
+
+Mobile-first. Thumb reach: primary "+" is a large bottom-right or bottom bar
+button. Horizontal swipe between trip pages is required (plus a tab/chip
+strip so the user can jump).
+
+Locked trip (is_locked = true)
+  All expense/settlement/member write controls disabled in the UI.
+  Admin can still Unlock from Trip Settings.
+  Read-only conclusion is the expected state.
+
+==============================================================================
+3. SCREEN REQUIREMENTS
+==============================================================================
+
+3.1 Login
+  Buttons: Email code, Google, Apple.
+  Email flow: enter email -> receive 6-digit OTP -> type code in the app.
+  Persist session (supabase persistSession).
+  First login: force display_name; language defaults to device locale
+  (zh-HK / zh-TW / zh-Hant -> zh-Hant, else en).
+
+3.2 My Trips
+  List trips the user belongs to (include ones where they were removed?
+  No — only current membership removed_at IS NULL).
+  Actions: Create trip, Join with code.
+  Show trip name, dates, a balance chip for "me".
+
+3.3 Create trip
+  Required: name, start_date, end_date.
+  After dates chosen, list every calendar date.
+  Per date: city search via Open-Meteo geocoding.
+  Shortcut: "Same as previous day".
+  Persist per date: location_name, country_code, lat, lng, timezone,
+  local currency (country->currency lookup table in the app).
+  Creator becomes owner.
+
+3.4 Join
+  Link: /join/:token
+  Code: 6 chars, no 0/O/1/I.
+  After auth: "Join as new member" OR pick a placeholder to claim.
+  Then land on Overview.
+  Share uses navigator.share when present.
+
+3.5 Overview
+  Name, dates, duration text ("4 days, 3 nights")
+  Countdown before start OR "Day X of N" during trip
+  Per-date location + weather + local currency + current FX to HKD
+  Member list (placeholders labelled)
+  Invite link + code + share (hide secrets from non-admins if backend
+  withholds columns; do not log tokens)
+  Quick totals: trip spending HKD, my share, my balance
+
+3.6 Expense pages (pre-trip / day / post-trip)
+  Pin multi-day expenses that cover this date at the top, labelled
+    "Multi-day  12-15 Oct  (Day 2 of 4)"
+  Then that date's single-day expenses, sort by local time
+  Page total in HKD (exclude soft-deleted; count multi-day once globally
+  but show it on each covered page; page total MAY include the multi-day
+  amount only on the start date OR show a "included in trip total" note —
+  pick one rule and apply it consistently: RECOMMENDED: page total includes
+  expenses whose local_date == this page date only, so multi-day hits the
+  start-date page total once)
+  Big "+" to add
+  Soft-deleted expenses are hidden
+  Empty To -> show "Personal" badge
+  Each row:
+    title, category icon, time "23:10 (Tokyo time)"
+    original amount + HKD  e.g. "3,000 JPY  (HK$ 157.80)"
+    if original currency != that date's local currency, also show local
+    paid by, split between
+    "what it means for me"  e.g. "You owe Alex HK$ 52.60"
+
+  Page assignment (use stored local_date, NEVER the phone's calendar)
+    local_date < trip.start_date            -> Pre-trip
+    local_date in [start, end]              -> that Day
+    local_date > trip.end_date              -> Post-trip
+  Multi-day visible on every date D where
+    local_date <= D <= end_date
+
+  Auto-move: date defaults to current page. If saved date belongs to
+  another page, navigate there and toast:
+    "This expense was moved to 14 Oct (Osaka) because of its date."
+
+3.7 Expense form
+  Required: title, amount, currency, paid_by (default me), To (default
+  all current members with removed_at null), date+time, category
+  Optional: location text or geolocation, photo (camera/gallery),
+  multi-day toggle + end date, note
+  Currency default:
+    day page -> that day's trip_days.currency
+    pre/post -> HKD
+    if user changes date to another day, refresh currency UNLESS
+    currency_manually_set
+  Amount input: respect currency decimals (HKD 2, JPY 0, KRW 0).
+  Convert to integer minor units before insert.
+  Optimistic lock: send updated_at on edit; on mismatch, refresh + retry UI.
+  Locked trip: form is read-only.
+  Double-submit: disable submit until the request settles.
+
+  Categories (fixed enum)
+    Food & Drink
+    Transport
+    Accommodation
+    Activities & Tickets
+    Shopping
+    Groceries
+    Loan
+    Other
+
+3.8 Members
+  List with role, placeholder badge, "left the trip" if removed_at set
+  Add placeholder by display name
+  Admins: promote admin, remove member (warn if balance != 0)
+
+3.9 Activity log
+  Append-only. Who / when / what changed.
+  Example: "Alex edited 'Dinner': 800 -> 900 JPY  (13 Oct 21:04)"
+  Restore soft-deleted expense from the log row.
+
+3.10 Trip settings (admin)
+  Edit name, dates, per-date locations
+  Date change re-buckets expenses (backend); UI must refetch pages
+  Regenerate invite (old link/code die)
+  Toggle joining_enabled
+  Lock / unlock
+  Owner only: delete trip, confirm by typing trip name
+
+3.11 Notifications
+  In-app bell always
+  Push: Android; iOS 16.4+ AND installed PWA only
+  Request permission from a user gesture after install
+  Events (each togglable in Settings):
+    expense added that includes you
+    expense that includes you edited/deleted
+    repayment recorded to you
+    someone joined / claimed placeholder
+    trip locked
+  Soft-delete realtime arrives as UPDATE deleted_at, not DELETE.
+  Treat that as remove-from-list.
+
+3.12 Export CSV
+  Client-generated, UTF-8 with BOM (Excel + Chinese)
+  File 1: <trip>_expenses.csv
+    date, time, timezone, page, title, category, amount, currency,
+    rate_to_hkd, amount_hkd, paid_by, to_members, share_each,
+    personal (Y/N), multi_day_end, location, note, photo_link
+  File 2: <trip>_summary.csv
+    member, total_paid_hkd, total_share_hkd, balance_hkd,
+    plus who-pays-whom list
+
+3.13 Conclusion (last page) — CRITICAL
+  Section 1  Stats (see money rules)
+  Section 2  Balances per member (+ owed, - owes)
+  Section 3  Who pays whom (min payments, greedy)
+  Toggle:
+    "All in HKD" (default)
+    "By currency"
+  Tap a suggested payment -> Mark as paid
+    choose original currency OR HKD
+    write settlements row with idempotency key
+    if paying a foreign debt in HKD, use THAT day's rate and clear debt
+  Do NOT persist suggested payments. Recompute from nets after every
+  expense or settlement change.
+
+==============================================================================
+4. DATA THE FRONTEND READS / WRITES
+==============================================================================
+
+Load a trip in as few round trips as possible:
+  trips, trip_days, trip_members, expenses (deleted_at is null),
+  expense_participants, settlements, fx_rates (latest + needed dates)
+
+Frontend OWNS (compute in the client)
+  - page grouping of expenses
+  - display strings (HKD + local + "you owe X")
+  - stats charts
+  - who-pays-whom suggestions
+  - CSV files
+
+Backend OWNS (do not reimplement as source of truth)
+  - share_amount rows (trigger + rounding)
+  - fx_rate_to_hkd, fx_rate_date, amount_hkd on save
+  - activity_log insert
+  - notification insert
+  - join_trip + claim placeholder
+  - regenerate_invite
+  - is_locked write block
+
+Tables (fields the UI needs)
+
+  profiles
+    id, display_name, language
+
+  trips
+    id, name, start_date, end_date
+    base_currency = HKD, home_timezone = Asia/Hong_Kong
+    joining_enabled, is_locked, created_by
+    invite_token, invite_code   -- may be hidden from non-admins
+
+  trip_days
+    trip_id, date, location_name, country_code
+    latitude, longitude, timezone, currency
+
+  trip_members
+    id, trip_id, user_id (null = placeholder)
+    display_name, role: owner | admin | member
+    joined_at, removed_at
+
+  expenses
+    id, trip_id, title, category
+    amount INTEGER minor units, currency
+    paid_by (trip_members.id)
+    occurred_at UTC, timezone, local_date
+    end_date null unless multi-day
+    location_text, lat, lng, photo_path, note
+    fx_rate_to_hkd, fx_rate_date, amount_hkd
+    currency_manually_set
+    created_by, created_at, updated_at, deleted_at
+
+  expense_participants
+    expense_id, member_id, share_amount INTEGER
+    ZERO rows = personal expense
+
+  settlements
+    id, trip_id, from_member, to_member
+    debt_currency, debt_amount
+    paid_currency, paid_amount
+    fx_rate, paid_at, created_by
+    idempotency_key (required on insert)
+
+  activity_log, notifications, notification_settings, push_subscriptions
+  fx_rates (rate_date, base, quote, rate)
+  currencies (code, decimals, symbol)
+
+Edge Functions the UI calls
+  join_trip({ code | token, claim_placeholder_id? })
+  regenerate_invite({ trip_id })
+  (push subscribe is UI -> push_subscriptions insert; send is server)
+
+Open-Meteo (call from the client; cache per trip_day)
+  Geocoding: city search
+  Forecast: upcoming dates (~16 days)
+  Historical: past dates
+  Fields to show: icon, high, low, precip probability
+  Before forecast exists: "Forecast available from <date>"
+
+Realtime
+  Subscribe per trip_id on expenses, expense_participants, settlements,
+  trip_members, trips, trip_days, notifications
+  Soft delete = UPDATE deleted_at
+
+==============================================================================
+5. MONEY / SETTLEMENT RULES (UI MUST FOLLOW)
+==============================================================================
+
+INVARIANTS
+  1. Integer minor units only in state that represents money.
+     HKD 10.00 -> 1000 cents; JPY 3000 -> 3000; KRW 1000 -> 1000.
+  2. Display with a formatter that uses currencies.decimals.
+  3. Shares on screen come from expense_participants.share_amount
+     (server). Do not re-split on the client except as a preview that
+     is discarded after save.
+  4. Remainder rule if you MUST preview: q = amount / n, r = amount % n,
+     first r members by trip_members.id ascending get q+1.
+     Never "first in the on-screen list".
+  5. Personal = no participants. Visible. No balance effect.
+  6. category === 'Loan' is included in balances, EXCLUDED from spending
+     stats and trip total spending.
+  7. Multi-day counted ONCE in trip totals and balances.
+  8. Stats and expense HKD display use locked amount_hkd / fx_rate_to_hkd.
+  9. "All in HKD" who-pays-whom does NOT sum amount_hkd.
+     Net each member in each ORIGINAL currency (paid - share + settlements
+     in that currency), convert each currency-net at the LATEST / payment
+     day mid-market rate to HKD cents, then greedy-match.
+ 10. "By currency" greedy-matches separately per currency.
+ 11. Greedy: pair largest debtor with largest creditor; repeat.
+     At most members-1 payments per currency vector.
+ 12. Suggested lines are derived. Only settlements rows change nets.
+
+Removed members stay in balances and history. Default "To = everyone"
+excludes removed_at != null.
+
+==============================================================================
+6. UX / ACCESSIBILITY / I18N
+==============================================================================
+
+  - Mobile first, min 44px tap targets
+  - Safe-area insets (iOS home indicator)
+  - Do not rely on hover
+  - Language switch in Settings; format dates/numbers/currency for locale
+  - User-typed titles/notes stay as typed (no translation)
+  - Category names ARE translated
+  - Reduced motion: disable page-swipe animation if prefers-reduced-motion
+  - Forms: visible labels, error text, do not submit empty required
+  - Personal expense copy must say it is visible to all members
+  - Photo upload: strip EXIF GPS if a client library is easy; otherwise
+    warn that photos may contain location
+
+==============================================================================
+7. FOLDER CONVENTIONS (suggested)
+==============================================================================
+
+  src/
+    app/                 routes + trip shell
+    features/
+      auth/
+      trips/
+      expenses/
+      settlement/        balances + who-pays-whom + mark paid
+      members/
+      activity/
+      notifications/
+      settings/
+    lib/
+      money.ts           minor units, format, NEVER raw number math
+      fx.ts
+      settlement.ts      pure functions, unit-test these
+      dates.ts           timezone + page assignment
+      csv.ts
+      supabase.ts
+      i18n.ts
+    assets/pwa/
+
+  Unit-test settlement.ts and money.ts. That is the highest-risk UI code.
+
+==============================================================================
+8. PHASE ORDER (FRONTEND)
+==============================================================================
+
+  F1  Vite app (not test/frontend), PWA, i18n shell, router, auth OTP/Google/Apple
+  F2  My Trips, create trip + per-date locations, join link/code, Overview + weather
+  F3  Expense pages + form + personal + multi-day + FX display + photos
+  F4  Conclusion stats + both settlement views + mark paid
+  F5  Activity restore, admin settings, lock, notifications, CSV
+  Then test on a real iPhone and Android against the rollout bar below.
+
+==============================================================================
+9. ACCEPTANCE BAR (v1 frontend done)
+==============================================================================
+
+  A 4-person, 2-currency, 4-day trip with:
+    one multi-day hotel
+    one loan
+    one personal souvenir
+    one trip date-range edit
+    one placeholder claim
+    one HKD repayment of a KRW debt
+  must show:
+    correct page for every expense
+    shares visible and consistent with server rows
+    personal not in balances
+    loan in balances, not in spending total
+    multi-day once in totals, pinned on every covered day
+    All-in-HKD suggestions use payment-day FX, not sum(amount_hkd)
+    after mark-as-paid, nets update and a second tap does not double-pay
+    EN and zh-Hant both render
+    installed PWA opens standalone on iOS and Android
+
+==============================================================================
+10. COLLABORATION RULES FOR THE IMPLEMENTING AGENT
+==============================================================================
+
+  - Ask before adding libraries beyond the stack above
+  - Do not commit .env, node_modules, dist
+  - Do not put invite tokens in analytics or console.log in production
+  - Do not "simplify" OTP into magic links
+  - Do not use float for money
+  - Do not build a BFF
+  - If backend fields are missing, stub types and list the gap; do not
+    silently fake balances
+  - Match existing test/frontend only for PWA patterns; new app lives in
+    its own folder (e.g. apps/web or frontend/) when the human asks to
+    scaffold it
+
+==============================================================================
+ END
+==============================================================================
