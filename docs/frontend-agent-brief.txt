@@ -12,19 +12,25 @@ HOW TO USE THIS FILE
   are not in this brief or in travel-bill-split-app-spec.txt.
   If the two documents disagree, the spec + section 12 invariants win.
   Do not implement section 11 "Future Ideas".
+  Place ALL production frontend code in web/ at the repo root.
   Do not build the production app inside test/frontend. That folder is an
-  environment check only.
+  environment check only. Do not use frontend/, apps/web, or src/ at repo
+  root as the app folder.
 
 CURRENT REPO (do not ignore)
   GitHub: JustinBSG/Travel_Bill_Splitting_Web_App  (branch: main)
   Local (Windows): F:\OneDrive\Documents\side_project\Travel_Bill_Splitting_Web_App
   Layout:
+    web/              PRODUCTION frontend — put all Vite/React/TS app code here
+    backend/          PRODUCTION backend-as-code (not your job, do not write here)
     test/frontend     Vite + React + TS + vite-plugin-pwa  (ENV TEST ONLY)
     test/backend      empty / ignore
+  REMINDER: scaffold and edit the real PWA only under web/
+            (e.g. npm create vite@latest web -- --template react-ts).
   Test deploy (HTTPS, installable):
     https://test-frontend.justin610810.workers.dev
   Production frontend host target: Cloudflare Pages
-    Root directory: the REAL app folder (not /test/frontend with a leading slash)
+    Root directory: web   (no leading slash; not /web, not test/frontend)
     Build: npm run build
     Output: dist
     Deploy command: EMPTY (do not use npx wrangler deploy for Pages static)
@@ -411,10 +417,13 @@ excludes removed_at != null.
     warn that photos may contain location
 
 ==============================================================================
-7. FOLDER CONVENTIONS (suggested)
+7. FOLDER CONVENTIONS
 ==============================================================================
 
-  src/
+  Production frontend lives entirely in web/.
+  Example: web/src/lib/money.ts  — not src/lib/money.ts at repo root.
+
+  web/src/
     app/                 routes + trip shell
     features/
       auth/
@@ -441,7 +450,7 @@ excludes removed_at != null.
 8. PHASE ORDER (FRONTEND)
 ==============================================================================
 
-  F1  Vite app (not test/frontend), PWA, i18n shell, router, auth OTP/Google/Apple
+  F1  Vite app in web/ (not test/frontend), PWA, i18n shell, router, auth OTP/Google/Apple
   F2  My Trips, create trip + per-date locations, join link/code, Overview + weather
   F3  Expense pages + form + personal + multi-day + FX display + photos
   F4  Conclusion stats + both settlement views + mark paid
@@ -482,9 +491,9 @@ excludes removed_at != null.
   - Do not build a BFF
   - If backend fields are missing, stub types and list the gap; do not
     silently fake balances
-  - Match existing test/frontend only for PWA patterns; new app lives in
-    its own folder (e.g. apps/web or frontend/) when the human asks to
-    scaffold it
+  - Match existing test/frontend only for PWA patterns
+  - REMINDER: all production frontend code goes in web/ only
+    (not test/frontend, not frontend/, not apps/web)
 
 ==============================================================================
  END

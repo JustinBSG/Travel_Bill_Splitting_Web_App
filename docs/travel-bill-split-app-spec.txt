@@ -16,6 +16,8 @@ CONTENTS
   9. Rules & Edge Cases
  10. Build Plan
  11. Future Ideas (not in v1)
+ 12. Design Conclusion (v1 freeze)
+ 13. Repo layout (web/ and backend/)
 
 
 ==============================================================================
@@ -34,18 +36,27 @@ and split expenses while travelling.
 Base currency: HKD
 Home location (default for pre-/post-trip): Hong Kong, timezone Asia/Hong_Kong
 
+REPO LAYOUT (mandatory)
+  Production frontend code  -> web/
+  Production backend code   -> backend/
+  Env-check apps only       -> test/frontend and test/backend
+  Do not put the real PWA in test/frontend.
+  Do not put backend-as-code in a folder named supabase/.
+  Cloudflare Pages root directory for production: web
+  (no leading slash). Backend is not deployed by Pages.
+
 
 ==============================================================================
 2. TECH STACK
 ==============================================================================
 
-Frontend
+Frontend  (all application UI code lives in web/)
   - React + Vite + TypeScript
   - vite-plugin-pwa (manifest, service worker, installability)
   - i18n library (e.g. i18next) for English / Traditional Chinese
-  - Hosted on Cloudflare Pages or Vercel (auto-deploy on git push)
+  - Hosted on Cloudflare Pages (auto-deploy on git push; root = web)
 
-Backend + Database (Supabase)
+Backend + Database (all backend-as-code lives in backend/)
   - Supabase Auth: login (email code, Google, Apple)
   - Supabase Postgres: all app data
   - Row Level Security (RLS): each user only sees trips they belong to
@@ -622,8 +633,9 @@ Push notifications
 ==============================================================================
 
 Phase 1  Foundation
-  - Supabase project, database tables, RLS
-  - PWA setup (manifest, icons, install banner/button)
+  - Repo folders: web/ (frontend), backend/ (migrations + Edge Functions)
+  - Supabase project, database tables, RLS (code in backend/)
+  - PWA setup in web/ (manifest, icons, install banner/button)
   - Login (email code, Google, Apple)
   - Languages framework (EN / Traditional Chinese)
 
@@ -666,6 +678,69 @@ Phase 5  Collaboration & polish
 - FPS / PayMe details for one-tap repayment
 - Multiple locations in one day
 - Google Play listing via Trusted Web Activity
+
+==============================================================================
+12. DESIGN CONCLUSION (v1 freeze)
+==============================================================================
+
+This document is the v1 product + system contract. Build against it; do not
+expand scope into section 11 until Phase 5 is shipped and used on a real trip.
+
+What v1 is
+  A multi-tenant PWA for small friend groups. Trust model is "cooperative
+  members of the same trip", not "hostile tenants sharing a ledger". Every
+  member may create/edit/delete any expense. Integrity is enforced by
+  integer money, server-side share splits, locked FX, activity log, and
+  optional trip lock — not by per-user write isolation on expenses.
+
+What v1 is not
+  Not a bank, not an accounting package, not offline-first, not itemized
+  or weighted splits, not a marketplace. Settlement suggestions are a
+  convenience UI over net balances; they are not a payment rail.
+
+Frozen invariants (must not be simplified away)
+  1. Money is integer smallest units. Never float4/float8/JS number for
+     amounts or shares. FX rates are numeric; amount_hkd is computed in
+     the database trigger and stored as integer HKD cents.
+  2. Shares MUST sum exactly to amount (remainder to members in stable
+     order by trip_members.id, not display-list order).
+  3. Page assignment uses stored local_date / end_date, not the viewer's
+     phone clock.
+  4. Multi-day expenses display on every covered date and count once.
+  5. Personal expense = zero expense_participants rows. Visible, no
+     balance effect.
+  6. Loans affect balances, never spending stats.
+  7. Placeholder claim updates user_id on the SAME trip_members.id.
+  8. Soft-delete only. Restore from activity_log. Log is append-only.
+  9. is_locked blocks all member writes except admin unlock.
+ 10. "All in HKD" settlement converts ORIGINAL currency balances at the
+     payment-day rate. Do not sum locked amount_hkd for who-pays-whom.
+
+Must-fix before Phase 1 ships (gaps in sections 6–7)
+  - Unique indexes: invite_code, invite_token; (trip_id, user_id) WHERE
+    user_id IS NOT NULL AND removed_at IS NULL; fx_rates PK
+    (rate_date, base_currency, quote_currency).
+  - Invite secrets must not be readable by ordinary members (column
+    privileges or a separate invites table + SECURITY DEFINER join).
+  - join_trip is transactional + rate-limited (6-char codes are
+    brute-forceable).
+  - Optimistic lock on expenses.updated_at (lost-update).
+  - Idempotency key on settlements (double tap "Mark as paid").
+  - Photo bucket private; signed URLs only.
+  - Replica identity FULL on soft-deleted realtime tables if clients
+    need old-row payloads.
+  - Client money math uses a decimal library; server remains source of
+    truth for shares and amount_hkd.
+
+Explicit non-goals deferred to section 11
+  Offline queue, OCR, uneven/itemized splits, multi-payer, in-day multi
+  city, native store listing, PayMe/FPS rail.
+
+Rollout bar
+  A 4-person, 2-currency, 4-day trip with one multi-day hotel, one loan,
+  one personal souvenir, one date-range edit, one placeholder claim, and
+  one HKD repayment of a KRW debt — all balances exact, all pages
+  correct, activity log complete — is the definition of "v1 done".
 
 ==============================================================================
  END
