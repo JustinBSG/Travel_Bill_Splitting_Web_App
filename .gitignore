@@ -1,1 +1,11 @@
-travel-bill-split-app-spec.txt
+node_modules/
+dist/
+.dev/
+.wrangler/
+.supabase/
+.env
+.env.local
+web/.env
+web/.env.local
+*.log
+.DS_Store

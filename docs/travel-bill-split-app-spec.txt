@@ -1,0 +1,672 @@
+==============================================================================
+ TRAVEL BILL SPLITTING WEB APP
+ Feature Specification & System Design  (Version 1)
+ Date: 2026-09-23
+==============================================================================
+
+CONTENTS
+  1. Overview
+  2. Tech Stack
+  3. System Architecture
+  4. Page Structure & Navigation
+  5. Feature Specification
+  6. Database Design
+  7. Backend Logic & Security
+  8. External Services
+  9. Rules & Edge Cases
+ 10. Build Plan
+ 11. Future Ideas (not in v1)
+
+
+==============================================================================
+1. OVERVIEW
+==============================================================================
+
+A web app, installable on iOS and Android, for groups of friends to track
+and split expenses while travelling.
+
+- Each trip is separate, with its own members, dates, locations and expenses.
+- Expenses are grouped into pages: pre-trip, one page per trip day, and
+  post-trip.
+- Every expense is shown in HKD and in the local currency of its location.
+- The last page calculates who needs to pay whom.
+
+Base currency: HKD
+Home location (default for pre-/post-trip): Hong Kong, timezone Asia/Hong_Kong
+
+
+==============================================================================
+2. TECH STACK
+==============================================================================
+
+Frontend
+  - React + Vite + TypeScript
+  - vite-plugin-pwa (manifest, service worker, installability)
+  - i18n library (e.g. i18next) for English / Traditional Chinese
+  - Hosted on Cloudflare Pages or Vercel (auto-deploy on git push)
+
+Backend + Database (Supabase)
+  - Supabase Auth: login (email code, Google, Apple)
+  - Supabase Postgres: all app data
+  - Row Level Security (RLS): each user only sees trips they belong to
+  - Supabase Storage: photo proof images
+  - Supabase Realtime: expenses appear live on friends' phones
+  - Supabase Edge Functions: join trip, exchange rates, push notifications
+  - pg_cron: scheduled job to fetch exchange rates daily
+
+External APIs
+  - Exchange rates: mid-market FX rate API (see section 8)
+  - Weather + location search: Open-Meteo (free, no API key)
+  - Web Push: standard browser push (iOS 16.4+ installed PWA, Android)
+
+
+==============================================================================
+3. SYSTEM ARCHITECTURE
+==============================================================================
+
+   +-------------------------------------------+
+   |  User's phone                             |
+   |  iOS Safari / Android Chrome              |
+   |  (installed to home screen as a PWA)      |
+   +---------------------+---------------------+
+                         |
+                         v
+   +-------------------------------------------+
+   |  FRONTEND  (React PWA)                    |
+   |  Hosted on Cloudflare Pages / Vercel      |
+   |  - All screens and forms                  |
+   |  - Split & settlement calculation display |
+   |  - Calls weather API directly             |
+   +---------------------+---------------------+
+                         |  supabase-js
+                         |  (HTTPS + Realtime websocket)
+                         v
+   +-------------------------------------------+
+   |  SUPABASE  (backend + database)           |
+   |  - Auth         login & sessions          |
+   |  - Postgres     trips, members, expenses  |
+   |  - RLS          access rules              |
+   |  - Storage      photo proof               |
+   |  - Realtime     live updates              |
+   |  - Edge Funcs   join, FX rates, push      |
+   |  - pg_cron      daily FX rate fetch       |
+   +---------------------+---------------------+
+                         |
+                         v
+   +-------------------------------------------+
+   |  EXTERNAL SERVICES                        |
+   |  - FX rate API                            |
+   |  - Open-Meteo (weather, geocoding)        |
+   |  - Browser push services                  |
+   +-------------------------------------------+
+
+Responsibilities
+  Frontend  = what the user sees and taps.
+  Backend   = login, permissions, joining trips, rates, notifications.
+  Database  = permanent storage of everything shared between friends.
+
+
+==============================================================================
+4. PAGE STRUCTURE & NAVIGATION
+==============================================================================
+
+App level
+  - Login page
+  - My Trips (list of trips + "Create trip" + "Join with code")
+  - Notifications
+  - Settings (profile name, language, notification settings)
+
+Inside a trip (swipe left/right or tab bar), in this order:
+
+  [1] Overview         basic info: name, dates, duration, locations per day,
+                       weather, members, invite link/code
+  [2] Pre-trip         expenses dated BEFORE the trip start date
+  [3] Day 1 ... Day N  one page per trip date; expenses on that date
+  [N+3] Post-trip      expenses dated AFTER the trip end date
+  [Last] Conclusion    totals, stats, balances, who pays whom
+
+Also inside a trip (from a menu):
+  - Members (list, placeholders, roles)
+  - Activity Log
+  - Trip Settings (admin only)
+  - Export CSV
+
+Example: 4-day trip, 12-15 Oct
+  Overview | Pre-trip | 12 Oct | 13 Oct | 14 Oct | 15 Oct | Post-trip | Conclusion
+
+
+==============================================================================
+5. FEATURE SPECIFICATION
+==============================================================================
+
+------------------------------------------------------------------------------
+5.1 Easy install
+------------------------------------------------------------------------------
+- Android: show an "Install app" button (uses the browser install prompt).
+- iOS: show a first-visit banner: "Tap Share, then Add to Home Screen",
+  with a picture of the Share icon. Hide it once installed.
+- App opens full screen (no browser bar) after install.
+- Manifest: app name, short name, theme colour, icons 192px and 512px,
+  maskable icon for Android, apple-touch-icon for iOS.
+
+------------------------------------------------------------------------------
+5.2 Easy login
+------------------------------------------------------------------------------
+- Options: Email 6-digit code (OTP), Sign in with Google, Sign in with Apple.
+- Use a code typed into the app, NOT a magic link. On iOS a magic link opens
+  in Safari instead of the installed app, so the user gets logged in in the
+  wrong place.
+- Session is kept; user logs in once.
+- First login: ask for display name (and language, defaulting to device).
+
+------------------------------------------------------------------------------
+5.3 Create a trip
+------------------------------------------------------------------------------
+Required fields
+  - Trip name
+  - Start date and end date (duration calculated automatically)
+  - Location for each date
+
+Location per date
+  - After picking dates, the app lists every date.
+  - User searches a city for each date (Open-Meteo geocoding).
+  - "Same as previous day" shortcut to fill quickly.
+  - From the location the app stores: city name, country, latitude,
+    longitude, timezone, local currency.
+
+The creator automatically becomes the trip admin.
+
+------------------------------------------------------------------------------
+5.4 Invite & join
+------------------------------------------------------------------------------
+System generates two ways to join:
+  - Share link:  https://<app>/join/<long-random-token>
+  - Join code:   6 characters, e.g. K7P2QX
+                 (no confusing characters like 0/O, 1/I)
+
+Join flow
+  1. Friend opens link or enters code in "Join with code".
+  2. Logs in if not already.
+  3. Chooses "Join as new member" or "I am <placeholder name>" to claim a
+     placeholder member (see 5.12).
+  4. Lands on the trip Overview page.
+
+Share button uses the phone's native share sheet (WhatsApp, etc.).
+
+------------------------------------------------------------------------------
+5.5 Overview page (first page)
+------------------------------------------------------------------------------
+- Trip name, dates, duration (e.g. "4 days, 3 nights")
+- Countdown before trip ("Starts in 12 days") or "Day 2 of 4" during trip
+- Location for each date
+- Weather per date (see 5.10)
+- Local currency per location + current rate to HKD
+- Member list
+- Invite link / code (with share button)
+- Quick totals: total trip spending in HKD, my share, my balance
+
+------------------------------------------------------------------------------
+5.6 Expense pages (pre-trip, each day, post-trip)
+------------------------------------------------------------------------------
+Each page shows:
+  - Multi-day expenses covering that date, pinned at the top with a label
+  - Then that date's expenses, sorted by time
+  - Page total in HKD
+  - Big "+" button to add an expense
+
+Every member can add, edit and delete any expense on any page.
+(All changes are recorded in the Activity Log.)
+
+Which page an expense belongs to
+  - Date before trip start    -> Pre-trip
+  - Date within trip dates    -> that Day page
+  - Date after trip end       -> Post-trip
+
+Auto-move
+  - When adding/editing, the date defaults to the current page's date.
+  - If the user sets a date that belongs to another page, after saving the
+    app moves to that page and shows a message, e.g.
+    "This expense was moved to 14 Oct (Osaka) because of its date."
+
+------------------------------------------------------------------------------
+5.7 Expense form
+------------------------------------------------------------------------------
+Required
+  - Title (e.g. "Ramen dinner")
+  - Amount
+  - Currency     (auto-filled, user can change; see 5.8)
+  - Paid by      (one member; defaults to me)
+  - To           (members who share it; defaults to everyone;
+                  clear all = personal expense, see 5.15)
+  - Date & time  (defaults to current page's date + current time)
+  - Category     (see 5.14)
+
+Optional
+  - Location     (text, or pick current location)
+  - Photo proof  (camera or gallery; stored in Supabase Storage)
+  - Multi-day    (toggle; set end date, see 5.11)
+  - Note
+
+Display of each expense
+  - Title, category icon, time
+  - Amount in original currency AND in HKD
+    e.g. "3,000 JPY  (HK$ 157.80)"
+  - Paid by, split between
+  - What it means for me, e.g. "You owe Alex HK$ 52.60"
+
+------------------------------------------------------------------------------
+5.8 Split rules
+------------------------------------------------------------------------------
+Rule: one person pays, split EQUALLY between the "To" people.
+The payer is included in "To" only if they also share the cost.
+
+Example 1: shared meal
+  Person A paid 30 HKD, To: A, B, C
+  -> each share = 10 HKD
+  -> B owes A 10 HKD, C owes A 10 HKD
+  -> A is owed 20 HKD in total
+
+Example 2: loan
+  Person D lends Person E 1,000 KRW
+  -> Expense: Paid by D, To: E only, category "Loan"
+  -> E owes D 1,000 KRW
+  -> E can pay back either 1,000 KRW, or the same amount in HKD using the
+     latest exchange rate on the day of repayment
+
+Example 3: personal expense
+  Person A buys a souvenir for 2,000 JPY, To: (empty)
+  -> Personal expense: not part of anyone's balance,
+     only counted in A's personal spending stats
+
+Rounding
+  - Amounts stored in the currency's smallest unit (cents for HKD, whole
+    yen for JPY, whole won for KRW).
+  - If it does not divide evenly, the leftover units are given one each to
+    the first people in the list, so shares always add up exactly.
+    e.g. 100 HKD / 3 = 33.34 + 33.33 + 33.33
+
+------------------------------------------------------------------------------
+5.9 Currency & exchange rates
+------------------------------------------------------------------------------
+Currency auto-fill
+  - The currency defaults to the local currency of the location on that
+    expense's date (e.g. 13 Oct in Tokyo -> JPY).
+  - Pre-trip and post-trip default to HKD.
+  - User can change it to any currency.
+  - If the date changes to a day with a different location, the currency
+    updates automatically (unless the user picked one manually).
+
+Showing HKD and local currency
+  - Every expense shows its original currency and HKD.
+  - If the original currency is not the local currency of that date
+    (e.g. paid in HKD while in Japan), also show the local currency
+    equivalent.
+
+Exchange rates
+  - Mid-market rates, the same type of rate Google shows when you search
+    "1 JPY to HKD" (see section 8 on the source).
+  - Rates fetched daily by a scheduled job and stored in the database.
+  - Rate is LOCKED when the expense is saved: past date -> that date's rate;
+    today or future date -> latest rate. Recalculated only if the amount,
+    currency or date is edited.
+  - The rate and its date are shown on the expense detail.
+
+Which rate is used where
+  - Expense display and stats -> the locked rate of each expense.
+  - Settlement in HKD (paying back later) -> latest rate on the day of
+    payment (matches the loan example in 5.8).
+
+------------------------------------------------------------------------------
+5.10 Weather
+------------------------------------------------------------------------------
+- Shown per date on the Overview page, and at the top of each Day page.
+- Shows: icon, high/low temperature, chance of rain.
+- Upcoming dates: forecast is shown once available (about 16 days ahead).
+  Before that: "Forecast available from <date>".
+- Past dates: actual recorded weather.
+- Source: Open-Meteo, using each date's location coordinates.
+
+------------------------------------------------------------------------------
+5.11 Time zones & multi-day expenses
+------------------------------------------------------------------------------
+Time zones
+  - Each trip date uses the timezone of its location.
+    e.g. Tokyo date -> Asia/Tokyo; pre-/post-trip -> Asia/Hong_Kong
+  - Date & time the user enters are interpreted in that timezone.
+  - Stored as UTC plus the timezone, so the expense always stays on the
+    correct date page for everyone, wherever their phone is.
+  - Shown as local time of that location, e.g. "23:10 (Tokyo time)".
+
+Multi-day expenses (e.g. hotel 4 nights, JR Pass)
+  - Toggle "Multi-day" and set start and end date.
+  - Pinned at the top of EVERY date it covers, labelled, e.g.
+    "Multi-day  12-15 Oct  (Day 2 of 4)"
+  - Counted only ONCE in totals and balances.
+  - Editing from any of those pages edits the same expense.
+
+------------------------------------------------------------------------------
+5.12 Placeholder members
+------------------------------------------------------------------------------
+- Any member can add a person by name only (no account needed),
+  e.g. "Grandma" or a friend who has not joined yet.
+- Placeholders can pay, be in "To", and appear in balances like anyone.
+- When that person joins with the link/code, they can claim the
+  placeholder; all expenses keep working and now belong to their account.
+- Placeholders are marked with a label in the member list.
+
+------------------------------------------------------------------------------
+5.13 Trip admin controls
+------------------------------------------------------------------------------
+Trip creator is the owner (admin). Admins can:
+  - Edit trip name, dates and per-date locations
+  - Promote another member to admin
+  - Remove a member (warning if their balance is not zero; their past
+    expenses stay and they are shown as "left the trip")
+  - Regenerate the invite link and code (old ones stop working)
+  - Turn joining on/off
+  - Lock the trip: everything becomes read-only, conclusion is final
+  - Unlock the trip
+  - Delete the trip (owner only; confirm by typing the trip name)
+
+If the trip dates change, expenses are automatically re-sorted into the
+correct pages (e.g. a removed day's expenses move to pre/post-trip).
+
+------------------------------------------------------------------------------
+5.14 Categories & stats
+------------------------------------------------------------------------------
+Categories
+  Food & Drink, Transport, Accommodation, Activities & Tickets, Shopping,
+  Groceries, Loan, Other
+
+Stats (on the Conclusion page)
+  - Total trip spending in HKD
+  - Spending by category (chart)
+  - Spending by day (chart)
+  - Per person: paid, their share, balance
+  - Per person personal spending (their shares + personal expenses)
+  - Spending by currency
+Loans are excluded from spending stats (a loan is not spending), but are
+included in balances.
+
+------------------------------------------------------------------------------
+5.15 Personal expenses
+------------------------------------------------------------------------------
+- Created by leaving "To" empty.
+- Shown on the date page with a "Personal" label.
+- Only affects the payer's personal stats; never affects balances.
+- Visible to all members (keeps things simple for v1).
+
+------------------------------------------------------------------------------
+5.16 Conclusion page (last page)
+------------------------------------------------------------------------------
+Sections
+  1. Trip total and stats (see 5.14)
+  2. Balances: each member's net amount (+ is owed, - owes)
+  3. Who pays whom: the smallest list of payments that settles everyone
+
+Two settlement views
+  - "All in HKD" (default): all currencies converted to HKD at the latest
+    rate, then the number of payments is minimised.
+    e.g. "B pays A HK$ 10.00"
+  - "By currency": balances kept in each original currency.
+    e.g. "E pays D 1,000 KRW  (about HK$ 5.80)"
+
+Record a repayment
+  - Tap a payment line, then "Mark as paid".
+  - Choose paid in the original currency or in HKD.
+  - If paid in HKD for a foreign-currency debt, the app converts using that
+    day's rate and clears the debt.
+  - Repayments are logged and notify the receiver.
+
+Minimising payments: match the person who owes the most with the person
+owed the most, repeat until all balances are zero (at most members - 1
+payments).
+
+------------------------------------------------------------------------------
+5.17 Activity log
+------------------------------------------------------------------------------
+- Records every change: expense add/edit/delete, repayment, member join /
+  leave / claim placeholder, trip settings changes, lock/unlock.
+- Shows who did it, when, and what changed, e.g.
+  "Alex edited 'Dinner': 800 -> 900 JPY  (13 Oct 21:04)"
+- Deleted expenses are soft-deleted and can be restored from the log.
+- The log itself cannot be edited or deleted by anyone.
+
+------------------------------------------------------------------------------
+5.18 Notifications
+------------------------------------------------------------------------------
+Channels
+  - In-app notification bell (always)
+  - Push notifications (Android; iOS 16.4+ when installed to home screen)
+
+Events
+  - Someone added an expense that includes you
+  - An expense that includes you was edited or deleted
+  - Someone recorded a repayment to you
+  - Someone joined the trip / claimed a placeholder
+  - Trip was locked (conclusion is final)
+Each type can be turned on/off in Settings.
+
+------------------------------------------------------------------------------
+5.19 Export to CSV
+------------------------------------------------------------------------------
+Two files per trip:
+  1. <trip>_expenses.csv
+     date, time, timezone, page, title, category, amount, currency,
+     rate_to_hkd, amount_hkd, paid_by, to_members, share_each,
+     personal (Y/N), multi_day_end, location, note, photo_link
+  2. <trip>_summary.csv
+     member, total_paid_hkd, total_share_hkd, balance_hkd,
+     plus the "who pays whom" list
+- Saved as UTF-8 with BOM so Chinese text displays correctly in Excel.
+
+------------------------------------------------------------------------------
+5.20 Languages
+------------------------------------------------------------------------------
+- English and Traditional Chinese.
+- Auto-detected from the phone, changeable in Settings, saved to profile.
+- All app text and category names translated; user-entered text (titles,
+  notes) is shown as typed.
+- Dates, numbers and currencies formatted for the chosen language.
+
+
+==============================================================================
+6. DATABASE DESIGN  (Supabase Postgres)
+==============================================================================
+
+profiles
+  id (= auth user id), display_name, language, created_at
+
+trips
+  id, name, start_date, end_date,
+  base_currency ('HKD'), home_timezone ('Asia/Hong_Kong'),
+  invite_token, invite_code, joining_enabled,
+  is_locked, created_by, created_at, updated_at
+
+trip_days                      -- one row per trip date
+  trip_id, date, location_name, country_code,
+  latitude, longitude, timezone, currency
+
+trip_members
+  id, trip_id,
+  user_id (NULL = placeholder),
+  display_name, role ('owner' | 'admin' | 'member'),
+  joined_at, removed_at
+
+expenses
+  id, trip_id, title, category,
+  amount (integer, smallest currency unit), currency,
+  paid_by (trip_members.id),
+  occurred_at (UTC timestamp), timezone, local_date,
+  end_date (NULL unless multi-day),
+  location_text, latitude, longitude (optional),
+  photo_path (optional), note,
+  fx_rate_to_hkd, fx_rate_date, amount_hkd,
+  currency_manually_set (bool),
+  created_by, created_at, updated_at, deleted_at (soft delete)
+  -- personal expense = no rows in expense_participants
+
+expense_participants           -- the "To" people
+  expense_id, member_id, share_amount (smallest unit)
+
+settlements                    -- repayments
+  id, trip_id, from_member, to_member,
+  debt_currency, debt_amount,        -- what it clears
+  paid_currency, paid_amount,        -- what was actually paid
+  fx_rate, paid_at, created_by
+
+activity_log
+  id, trip_id, actor_member, action ('create' | 'update' | 'delete' | ...),
+  entity_type, entity_id, before (json), after (json), created_at
+
+notifications
+  id, user_id, trip_id, type, payload (json), read_at, created_at
+
+notification_settings
+  user_id, type, enabled
+
+push_subscriptions
+  id, user_id, endpoint, keys (json), created_at
+
+fx_rates
+  rate_date, base_currency, quote_currency, rate, source
+
+currencies                     -- reference table
+  code, decimals (HKD 2, JPY 0, KRW 0, ...), symbol
+
+
+==============================================================================
+7. BACKEND LOGIC & SECURITY
+==============================================================================
+
+Row Level Security (RLS)
+  - Helper functions: is_trip_member(trip_id), is_trip_admin(trip_id)
+  - Members can read everything in their trips.
+  - Members can add/edit/delete expenses and settlements in their trips.
+  - Only admins can change trips, trip_days, roles, invites.
+  - No writes allowed when trip is_locked = true (except admin unlock).
+  - Photo storage bucket: only trip members can view/upload that trip's
+    photos.
+
+Database triggers
+  - On expense/settlement/member/trip change -> write activity_log row
+  - On expense/settlement change -> create notifications for affected
+    members
+  - On expense save -> look up and lock fx rate, compute amount_hkd and
+    local_date, split shares with rounding rule
+
+Edge Functions
+  - join_trip(code or token, claim_placeholder_id?)
+  - regenerate_invite(trip_id)
+  - fetch_fx_rates()      run daily by pg_cron, stores into fx_rates
+  - send_push()           triggered when a notification row is created
+
+Frontend-side calculation
+  - Balances, "who pays whom", stats and CSV export are calculated in the
+    app from the trip's data (small data, fast, no server needed).
+
+Realtime
+  - Trip pages subscribe to changes, so an expense added by a friend
+    appears immediately on everyone's phone.
+
+
+==============================================================================
+8. EXTERNAL SERVICES
+==============================================================================
+
+Exchange rates
+  - Google does not provide an official public API for the rates shown in
+    Google Search, and scraping Google is against its terms and breaks
+    easily.
+  - Use an FX API that provides mid-market rates (the same kind of rate
+    Google shows), e.g. Open Exchange Rates or ExchangeRate-API.
+    Values will match Google very closely, but may differ slightly.
+  - Frankfurter (European Central Bank data) is free but does not cover
+    every currency (e.g. TWD, VND), so check coverage for your
+    destinations.
+  - Check each provider's free-tier limits; one fetch per day is enough.
+
+Weather & location
+  - Open-Meteo forecast API (about 16 days ahead)
+  - Open-Meteo historical weather API (past dates)
+  - Open-Meteo geocoding API (city search -> coordinates, country,
+    timezone)
+  - Country -> currency: small lookup table in the app
+
+Push notifications
+  - Standard Web Push with VAPID keys, sent from the send_push Edge
+    Function.
+
+
+==============================================================================
+9. RULES & EDGE CASES
+==============================================================================
+
+- Amounts are never stored as floating point; always integer smallest unit.
+- Shares always add up exactly to the expense amount (rounding rule 5.8).
+- Multi-day expense counted once in totals, shown on every covered date.
+- Changing trip dates re-sorts expenses into the correct pages.
+- Changing a date's location updates currency default and timezone for new
+  expenses only; existing expenses keep their saved currency and time.
+- Removed members keep their history; balances still count them.
+- Placeholder claimed -> all their expenses, shares and settlements move to
+  the real account automatically (same member id, user_id filled in).
+- Deleted expenses are hidden from pages and totals, but restorable from
+  the activity log.
+- Locked trip: read-only for everyone until an admin unlocks it.
+- One location per date in v1 (e.g. travel day uses the arrival city).
+
+
+==============================================================================
+10. BUILD PLAN
+==============================================================================
+
+Phase 1  Foundation
+  - Supabase project, database tables, RLS
+  - PWA setup (manifest, icons, install banner/button)
+  - Login (email code, Google, Apple)
+  - Languages framework (EN / Traditional Chinese)
+
+Phase 2  Trips
+  - Create trip with dates and per-date locations
+  - Invite link/code, join flow
+  - Members and placeholder members
+  - Overview page with weather
+
+Phase 3  Expenses
+  - Expense pages (pre-trip, days, post-trip)
+  - Expense form, equal split, personal expenses
+  - Currency auto-fill, FX rates, HKD + local display
+  - Time zones, multi-day expenses, auto-move
+  - Photo proof, categories
+
+Phase 4  Conclusion
+  - Balances, who pays whom (HKD and by-currency views)
+  - Record repayments
+  - Stats
+
+Phase 5  Collaboration & polish
+  - Activity log with restore
+  - Trip admin controls, lock trip
+  - Notifications (in-app + push)
+  - CSV export
+  - Test on real iPhone and Android phone
+
+
+==============================================================================
+11. FUTURE IDEAS (not in v1)
+==============================================================================
+
+- Offline mode (save expenses without signal, sync later)
+- Receipt scanning to auto-fill amount, currency, merchant
+- Itemized split of one receipt (who ate what)
+- Uneven splits (exact amounts, shares) and multiple payers
+- Trip budget with progress bar
+- PDF summary export
+- FPS / PayMe details for one-tap repayment
+- Multiple locations in one day
+- Google Play listing via Trusted Web Activity
+
+==============================================================================
+ END
+==============================================================================
