@@ -81,7 +81,7 @@ npx wrangler dev
    | Deploy command | `npx wrangler deploy` (the default) |
    | Non-production branch deploy / preview command | leave the default |
    | Advanced settings → **Path** / **Root directory** | `web` |
-   | Builds for non-production branches | **enabled** |
+   | Enable Preview Builds (if shown here; otherwise in section 5) | **ticked** |
 
    There is no "build output directory" field in Workers. The output folder comes from
    `"assets": { "directory": "./dist" }` in `web/wrangler.jsonc`.
@@ -115,10 +115,10 @@ variables, not the runtime "Variables" further up the page). Add:
 
 ## 5. Branch settings
 
-Worker → **Settings** → **Build**:
-- **Branch control / Production branch:** `main`.
-- **Builds for non-production branches:** enabled. Every other branch builds a preview against
-  staging.
+Worker → **Settings** → **Build** → **Branch control**:
+- **Production branch** (dropdown): `main`. It defaults to the repo's default branch.
+- **Enable Preview Builds** (checkbox): ticked, which is the default for new Workers. Every other
+  branch then builds a preview against staging. Leave the preview command at its default.
 - **Build watch paths** (if shown): include `web/*`, so backend-only pushes skip the build.
 
 ## 6. Find your URLs
