@@ -1,0 +1,132 @@
+# Supabase project config for Travel Bill Split (backend-as-code).
+# Reference: https://supabase.com/docs/guides/local-development/cli/config
+#
+# The Supabase CLI only reads <workdir>/supabase/config.toml, and this repo
+# must not contain a folder named supabase/. Run the CLI through the bridge,
+# which links a temp workdir's supabase/ to this folder (template paths below
+# are relative to that workdir, hence ./supabase/templates/...):
+#     node backend/scripts/supabase.mjs <command>      (see backend/README.md)
+#
+# This file drives LOCAL development (`supabase start`) and function settings
+# on deploy. Production Auth (site URL, redirect allowlist, Google / Apple,
+# email OTP) is configured in the Dashboard, as the requirements say.
+
+project_id = "travel-bill-split"
+
+[api]
+enabled = true
+port = 54321
+# Only these schemas are reachable over REST. Internal helpers live in the
+# `private` schema, which is deliberately not listed.
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 17
+
+[db.migrations]
+enabled = true
+
+[db.seed]
+# Local only (`db reset`): sample FX rates so expenses can be saved without an
+# FX API key. Never run against production.
+enabled = true
+sql_paths = ["./seed.sql"]
+
+[realtime]
+enabled = true
+
+[studio]
+enabled = true
+port = 54323
+api_url = "http://127.0.0.1"
+
+[local_smtp]
+enabled = true
+port = 54324
+
+[storage]
+enabled = true
+# Photo proof is phone-sized; the trip-photos bucket itself is capped at 5 MB
+# by migration 20260924100300_storage.sql.
+file_size_limit = "5MiB"
+
+[auth]
+enabled = true
+site_url = "http://localhost:5173"
+additional_redirect_urls = ["http://localhost:5173", "http://127.0.0.1:5173"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+enable_signup = true
+enable_anonymous_sign_ins = false
+enable_manual_linking = false
+minimum_password_length = 8
+
+[auth.rate_limit]
+email_sent = 30
+token_refresh = 150
+sign_in_sign_ups = 30
+token_verifications = 30
+
+[auth.email]
+# Email OTP: 6-digit code, no magic links. The templates below contain only
+# the code ({{ .Token }}), never a sign-in link.
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = false
+secure_password_change = false
+max_frequency = "60s"
+otp_length = 6
+otp_expiry = 600
+
+[auth.email.template.magic_link]
+subject = "Your Travel Bill Split code / 你的旅行分帳登入碼"
+content_path = "./supabase/templates/otp_code.html"
+
+[auth.email.template.confirmation]
+subject = "Your Travel Bill Split code / 你的旅行分帳登入碼"
+content_path = "./supabase/templates/otp_code.html"
+
+[auth.sms]
+enable_signup = false
+
+# Google and Apple sign-in. Enable locally by exporting the env vars below;
+# in production turn them on in the Dashboard (Authentication > Providers).
+[auth.external.google]
+enabled = false
+client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
+skip_nonce_check = true
+
+[auth.external.apple]
+enabled = false
+client_id = "env(SUPABASE_AUTH_EXTERNAL_APPLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_APPLE_SECRET)"
+
+[edge_runtime]
+enabled = true
+policy = "per_worker"
+deno_version = 2
+
+# join_trip / regenerate_invite: a signed-in user's JWT is required (and
+# re-verified in code). fetch_fx_rates / send_push are machine-to-machine:
+# the gateway JWT check is off because each checks its own shared secret
+# (CRON_SECRET / PUSH_WEBHOOK_SECRET) in constant time.
+[functions.join_trip]
+verify_jwt = true
+
+[functions.regenerate_invite]
+verify_jwt = true
+
+[functions.fetch_fx_rates]
+verify_jwt = false
+
+[functions.send_push]
+verify_jwt = false
+
+[analytics]
+enabled = false

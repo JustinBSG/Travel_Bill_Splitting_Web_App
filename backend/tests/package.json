@@ -1,0 +1,12 @@
+{
+  "name": "travel-bill-split-backend-tests",
+  "private": true,
+  "type": "module",
+  "description": "Backend tests: migrations on PGlite (embedded Postgres) with Supabase platform stubs, plus Edge Function unit tests. Run: npm install && npm test",
+  "scripts": {
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8"
+  }
+}

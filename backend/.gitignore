@@ -1,0 +1,14 @@
+# Supabase CLI state, written here through scripts/supabase.mjs
+.temp/
+.branches/
+
+# Secrets: never commit
+.env
+.env.*
+!.env.example
+functions/.env
+functions/.env.*
+!functions/.env.example
+
+# Test tooling
+tests/node_modules/
