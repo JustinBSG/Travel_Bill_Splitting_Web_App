@@ -1,0 +1,828 @@
+==============================================================================
+ TRAVEL BILL SPLIT — BACKEND REQUIREMENTS
+ Source branch : JustinBSG/Travel_Bill_Splitting_Web_App  branch backend
+                 (commit bd5445f3, 2026-09-24)
+ Product spec  : docs/travel-bill-split-app-spec.txt  v1.4
+ Frontend brief: docs/frontend-agent-brief.txt        v1.4
+ Status        : backend/ folder is NOT in the branch yet. This file is the
+                 contract the backend agent must implement on Supabase.
+==============================================================================
+
+HOW TO USE THIS FILE
+  Implement only what is listed here and in spec sections 6, 7, 8, 9, 12.
+  Do not implement spec section 11 (future ideas).
+  If this file and the spec disagree, spec section 12 invariants win.
+  Production backend-as-code lives in repo folder backend/ (NOT supabase/).
+  Cloudflare Pages deploys web/ only. Backend is deployed with the
+  Supabase CLI against a Supabase project.
+
+
+==============================================================================
+1. PLATFORM AND DEPLOYMENT
+==============================================================================
+
+Runtime
+  Host             Supabase project (Auth + Postgres + Storage + Realtime
+                   + Edge Functions + pg_cron)
+  Region           One APAC primary (prefer ap-southeast-1 Singapore or
+                   ap-northeast-1 Tokyo). Auth, Postgres and Storage origin
+                   stay in that region.
+  Public API base  https://<PROJECT_REF>.supabase.co
+  Style            RESTful HTTPS + JSON. Companion channel: Realtime
+                   WebSocket (not REST; required for live trip pages).
+
+Repo layout (mandatory)
+  backend/config.toml
+  backend/migrations/
+  backend/functions/join_trip/
+  backend/functions/regenerate_invite/
+  backend/functions/fetch_fx_rates/
+  backend/functions/send_push/
+  Do not create a folder named supabase/.
+  CLI: supabase --workdir backend link | db push | functions deploy
+
+Secrets (Edge Function / Vault only; never in web/)
+  SUPABASE_URL
+  SUPABASE_ANON_KEY
+  SUPABASE_SERVICE_ROLE_KEY
+  FX_API_BASE and FX_API_KEY
+  VAPID_PUBLIC_KEY
+  VAPID_PRIVATE_KEY
+  JOIN_RATE_LIMIT settings if not in DB
+
+Auth configuration (Dashboard, not code)
+  Email OTP 6-digit code. Disable magic links for the PWA.
+  Providers: email, Google, Apple.
+  Site URL + redirect allowlist: localhost Vite origin, Pages prod,
+  Pages preview, custom frontend domain.
+  Session: persist + auto-refresh on the client. Server validates JWT
+  on every request via Auth + RLS.
+
+
+==============================================================================
+2. REST SURFACE — HOW SUPABASE EXPOSES THE API
+==============================================================================
+
+Every client call uses:
+  Header  apikey:              <anon key>
+  Header  Authorization:       Bearer <user access token>
+  Header  Content-Type:        application/json
+  Header  Prefer:              return=representation
+  CORS    Pages origins only. Edge Functions must handle OPTIONS and
+          allow authorization, apikey, x-client-info, content-type,
+          x-retry-count.
+
+There are four REST families. Do not invent a fifth Node server.
+
+  A. Auth REST          /auth/v1/*
+  B. Data REST          /rest/v1/{table}     PostgREST on Postgres
+  C. RPC REST           /rest/v1/rpc/{fn}    SECURITY DEFINER functions
+  D. Storage REST       /storage/v1/*
+  E. Edge Function REST /functions/v1/{name}
+
+PostgREST mapping (use these verbs; do not wrap them in extra Express):
+
+  GET    /rest/v1/{table}?{filters}     list / read
+  POST   /rest/v1/{table}               insert
+  PATCH  /rest/v1/{table}?id=eq.{id}    update (soft-delete is PATCH)
+  DELETE /rest/v1/{table}               FORBIDDEN on expenses, settlements,
+                                        activity_log. Hard-delete trips is
+                                        owner-only via RPC.
+
+RLS is the authorizer. A missing policy is a public table.
+
+
+==============================================================================
+3. INVARIANTS THE API MUST ENFORCE
+==============================================================================
+
+  1. Money is integer minor units only (integer columns). Never
+     float4/float8. FX mid-market rate is numeric. amount_hkd is integer
+     HKD cents computed on the server at save time.
+  2. Shares MUST sum exactly to expenses.amount.
+       AA (split_method = 'equal'): server computes shares. Remainder
+          units go to members in ascending trip_members.id order, not
+          screen order.
+       AB (split_method = 'exact'): client sends share_amount per
+          member. Server REJECTS the save if sum(share_amount) != amount.
+  3. Page assignment uses stored local_date / end_date, never the
+     viewer's phone clock. Server derives local_date from occurred_at
+     + timezone.
+  4. Multi-day expenses: one row. Visible on every covered date in the
+     UI. Counted once in totals.
+  5. Personal expense = zero expense_participants rows. Visible to all
+     members. No balance effect.
+  6. category = 'Loan' is in balances, excluded from spending stats
+     (stats are client-side; server still stores the row normally).
+  7. Placeholder claim UPDATEs user_id on the SAME trip_members.id.
+     Never insert a second member row for the same person.
+  8. Soft-delete only on expenses (deleted_at). Restore clears
+     deleted_at. activity_log is append-only.
+  9. is_locked = true blocks all member writes except admin unlock.
+ 10. "All in HKD" settlement suggestions are CLIENT-derived and MUST
+     NOT be persisted. Settlements rows are the only repayment facts.
+     Do not sum locked amount_hkd to settle; payment-day rate applies
+     when paid_currency is HKD for a foreign debt.
+ 11. Cooperative trust: any current member may add/edit/soft-delete any
+     expense. Do not add "only the creator can edit".
+ 12. base_currency is always HKD. home_timezone is always
+     Asia/Hong_Kong. Do not make these writable.
+
+
+==============================================================================
+4. DATA MODEL (POSTGRES)
+==============================================================================
+
+All timestamps timestamptz. UUIDs for ids unless noted.
+Enums as text + check constraints (stable for PostgREST).
+
+4.1 profiles
+  id              uuid PK  = auth.users.id
+  display_name    text NOT NULL
+  language        text NOT NULL CHECK (language IN ('en','zh-Hant'))
+  created_at      timestamptz
+  -- appearance (System/Light/Dark) and colour theme (Washi/Classic)
+  -- are device-local. Do NOT add columns for them.
+
+4.2 trips
+  id              uuid PK
+  name            text NOT NULL
+  start_date      date NOT NULL
+  end_date        date NOT NULL CHECK (end_date >= start_date)
+  base_currency   text NOT NULL DEFAULT 'HKD' CHECK (= 'HKD')
+  home_timezone   text NOT NULL DEFAULT 'Asia/Hong_Kong'
+                  CHECK (= 'Asia/Hong_Kong')
+  joining_enabled boolean NOT NULL DEFAULT true
+  is_locked       boolean NOT NULL DEFAULT false
+  created_by      uuid NOT NULL REFERENCES profiles(id)
+  created_at      timestamptz
+  updated_at      timestamptz
+  -- invite_token / invite_code MUST NOT live on this table as
+  -- columns readable by members. See 4.3.
+
+4.3 trip_invites          (separate table; required by spec §12)
+  trip_id         uuid PK REFERENCES trips(id) ON DELETE CASCADE
+  invite_token    text NOT NULL UNIQUE          -- long random
+  invite_code     text NOT NULL UNIQUE          -- 6 chars, alphabet
+                  excluding 0 O 1 I
+  created_at      timestamptz
+  -- SELECT granted only to trip admins, or only via SECURITY DEFINER
+  -- RPCs / Edge Functions. Ordinary members must not read secrets.
+
+4.4 trip_days
+  trip_id         uuid REFERENCES trips(id) ON DELETE CASCADE
+  date            date
+  PRIMARY KEY (trip_id, date)
+  location_name   text NOT NULL
+  country_code    text NOT NULL
+  latitude        double precision NOT NULL
+  longitude       double precision NOT NULL
+  timezone        text NOT NULL                 -- IANA, e.g. Asia/Tokyo
+  currency        text NOT NULL                 -- ISO 4217
+  -- One location per date in v1.
+
+4.5 trip_members
+  id              uuid PK
+  trip_id         uuid NOT NULL REFERENCES trips(id) ON DELETE CASCADE
+  user_id         uuid NULL REFERENCES profiles(id)  -- NULL = placeholder
+  display_name    text NOT NULL
+  role            text NOT NULL CHECK (role IN ('owner','admin','member'))
+  joined_at       timestamptz
+  removed_at      timestamptz NULL
+  UNIQUE (trip_id, user_id) WHERE user_id IS NOT NULL
+                            AND removed_at IS NULL
+  -- At most one owner per trip (enforce by trigger or unique partial
+  -- index on role = 'owner').
+
+4.6 expenses
+  id                    uuid PK
+  trip_id               uuid NOT NULL REFERENCES trips(id)
+  title                 text NOT NULL
+  category              text NOT NULL CHECK (category IN (
+                          'Food & Drink','Transport','Accommodation',
+                          'Activities & Tickets','Shopping','Groceries',
+                          'Loan','Other'))
+  amount                integer NOT NULL CHECK (amount > 0)
+  currency              text NOT NULL
+  paid_by               uuid NOT NULL REFERENCES trip_members(id)
+  occurred_at           timestamptz NOT NULL
+  timezone              text NOT NULL
+  local_date            date NOT NULL           -- server-computed
+  end_date              date NULL               -- multi-day inclusive
+  location_text         text NULL
+  latitude              double precision NULL
+  longitude             double precision NULL
+  photo_path            text NULL
+  note                  text NULL
+  fx_rate_to_hkd        numeric NOT NULL        -- server-locked
+  fx_rate_date          date NOT NULL
+  amount_hkd            integer NOT NULL        -- HKD cents
+  currency_manually_set boolean NOT NULL DEFAULT false
+  split_method          text NOT NULL DEFAULT 'equal'
+                        CHECK (split_method IN ('equal','exact'))
+  created_by            uuid NOT NULL REFERENCES profiles(id)
+  created_at            timestamptz
+  updated_at            timestamptz NOT NULL    -- optimistic lock
+  deleted_at            timestamptz NULL
+  CHECK (end_date IS NULL OR end_date >= local_date)
+
+4.7 expense_participants
+  expense_id    uuid NOT NULL REFERENCES expenses(id) ON DELETE CASCADE
+  member_id     uuid NOT NULL REFERENCES trip_members(id)
+  share_amount  integer NOT NULL CHECK (share_amount >= 0)
+  PRIMARY KEY (expense_id, member_id)
+  -- Zero rows on an expense = personal.
+  -- AA: server writes share_amount.
+  -- AB: client supplies share_amount; server verifies sum.
+
+4.8 settlements
+  id               uuid PK
+  trip_id          uuid NOT NULL REFERENCES trips(id)
+  from_member      uuid NOT NULL REFERENCES trip_members(id)
+  to_member        uuid NOT NULL REFERENCES trip_members(id)
+  debt_currency    text NOT NULL
+  debt_amount      integer NOT NULL CHECK (debt_amount > 0)
+  paid_currency    text NOT NULL
+  paid_amount      integer NOT NULL CHECK (paid_amount > 0)
+  fx_rate          numeric NULL     -- required when currencies differ
+  paid_at          timestamptz NOT NULL
+  created_by       uuid NOT NULL REFERENCES profiles(id)
+  idempotency_key  text NOT NULL
+  UNIQUE (trip_id, idempotency_key)
+  CHECK (from_member <> to_member)
+
+4.9 activity_log
+  id            uuid PK
+  trip_id       uuid NOT NULL REFERENCES trips(id)
+  actor_member  uuid NULL REFERENCES trip_members(id)
+  action        text NOT NULL     -- create|update|delete|restore|
+                                  -- join|claim|leave|lock|unlock|
+                                  -- invite_regen|role_change|...
+  entity_type   text NOT NULL
+  entity_id     uuid NULL
+  before        jsonb NULL
+  after         jsonb NULL
+  created_at    timestamptz
+  -- INSERT only. No UPDATE/DELETE via API.
+
+4.10 notifications
+  id         uuid PK
+  user_id    uuid NOT NULL REFERENCES profiles(id)
+  trip_id    uuid NOT NULL REFERENCES trips(id)
+  type       text NOT NULL CHECK (type IN (
+               'expense_added','expense_updated','expense_deleted',
+               'settlement_received','member_joined','placeholder_claimed',
+               'trip_locked'))
+  payload    jsonb NOT NULL DEFAULT '{}'
+  read_at    timestamptz NULL
+  created_at timestamptz
+
+4.11 notification_settings
+  user_id  uuid REFERENCES profiles(id)
+  type     text
+  enabled  boolean NOT NULL DEFAULT true
+  PRIMARY KEY (user_id, type)
+
+4.12 push_subscriptions
+  id         uuid PK
+  user_id    uuid NOT NULL REFERENCES profiles(id)
+  endpoint   text NOT NULL
+  keys       jsonb NOT NULL          -- p256dh + auth
+  created_at timestamptz
+  UNIQUE (user_id, endpoint)
+
+4.13 fx_rates
+  rate_date       date
+  base_currency   text
+  quote_currency  text
+  rate            numeric NOT NULL CHECK (rate > 0)
+  source          text NOT NULL
+  PRIMARY KEY (rate_date, base_currency, quote_currency)
+
+4.14 currencies
+  code      text PK
+  decimals  integer NOT NULL CHECK (decimals BETWEEN 0 AND 3)
+  symbol    text NOT NULL
+  -- Seed HKD 2, JPY 0, KRW 0, TWD 0, CNY 2, USD 2, EUR 2, GBP 2,
+  -- SGD 2, THB 2, VND 0, MYR 2, AUD 2, plus others as needed.
+
+Required indexes (beyond PKs / uniques above)
+  expenses (trip_id, deleted_at, local_date)
+  expenses (trip_id, updated_at)
+  expense_participants (member_id)
+  settlements (trip_id)
+  trip_members (trip_id) WHERE removed_at IS NULL
+  activity_log (trip_id, created_at DESC)
+  notifications (user_id, created_at DESC)
+  Replica identity FULL on expenses (and any table whose Realtime
+  payload must include old row on UPDATE deleted_at).
+
+
+==============================================================================
+5. REST CATALOG
+==============================================================================
+
+Convention
+  JSON field names = column names (snake_case).
+  Filters use PostgREST:  trip_id=eq.{uuid}  deleted_at=is.null
+  Embeds allowed when they do not leak invite secrets, e.g.
+    GET /rest/v1/trips?id=eq.{id}&select=id,name,start_date,end_date,
+        joining_enabled,is_locked,created_by,trip_days(*),trip_members(*)
+  Dates as ISO 8601. Money as integers.
+
+--------------------------------------------------------------------------
+5.A  Auth REST  (/auth/v1)
+--------------------------------------------------------------------------
+
+POST /auth/v1/otp
+  Body { email, create_user: true }
+  Sends 6-digit email OTP. Do not enable magic-link templates.
+
+POST /auth/v1/verify
+  Body { email, token, type: 'email' }
+  Returns session { access_token, refresh_token, user }.
+
+POST /auth/v1/token?grant_type=refresh_token
+  Body { refresh_token }
+
+GET  /auth/v1/authorize?provider=google|apple
+  OAuth start. Callback is Supabase Auth, not Cloudflare.
+
+POST /auth/v1/logout
+
+On first auth.users insert: trigger creates profiles row with
+display_name placeholder empty or email local-part; language default
+'en'. Client PATCHes display_name before the user can create trips
+(frontend enforces; backend rejects trip create if display_name blank).
+
+--------------------------------------------------------------------------
+5.B  Profile
+--------------------------------------------------------------------------
+
+GET   /rest/v1/profiles?id=eq.{auth.uid}
+PATCH /rest/v1/profiles?id=eq.{auth.uid}
+  Writable: display_name, language.
+  RLS: user can read/update only own row.
+
+--------------------------------------------------------------------------
+5.C  Currencies and FX (read)
+--------------------------------------------------------------------------
+
+GET /rest/v1/currencies
+  Public-to-authenticated. Full reference table.
+
+GET /rest/v1/fx_rates?quote_currency=eq.HKD&rate_date=eq.{date}
+GET /rest/v1/fx_rates?quote_currency=eq.HKD&order=rate_date.desc&limit=1
+  Authenticated. Used by client for display of "current rate" and for
+  payment-day conversion preview. Server still locks rate on expense
+  save from this table.
+
+--------------------------------------------------------------------------
+5.D  Trips
+--------------------------------------------------------------------------
+
+GET  /rest/v1/trips
+  RLS: rows where the caller is a current member (removed_at IS NULL).
+  Do not select invite columns here.
+
+POST /rest/v1/rpc/create_trip
+  PREFERRED over raw POST /trips so days + owner member + invite are
+  one transaction.
+  Body:
+    {
+      "name": "Osaka",
+      "start_date": "2026-10-12",
+      "end_date": "2026-10-15",
+      "days": [
+        {
+          "date": "2026-10-12",
+          "location_name": "Osaka",
+          "country_code": "JP",
+          "latitude": 34.6937,
+          "longitude": 135.5023,
+          "timezone": "Asia/Tokyo",
+          "currency": "JPY"
+        }
+      ]
+    }
+  Server:
+    - Reject if display_name blank.
+    - Insert trips (created_by = auth.uid()).
+    - Insert one trip_days row per date from start_date..end_date.
+      Every date in range is required.
+    - Insert trip_members owner row (user_id = auth.uid(), role owner).
+    - Insert trip_invites (token + 6-char code).
+    - Activity log create.
+  Returns the trip with days, members, and invite secrets (creator is
+  admin).
+
+PATCH /rest/v1/rpc/update_trip
+  Admin only. Body may include name, start_date, end_date, days[].
+  On date-range change:
+    - Upsert/delete trip_days so the table matches the new inclusive
+      range.
+    - Existing expenses KEEP currency, timezone, occurred_at.
+    - Recompute nothing about FX unless amount/currency/date on the
+      expense itself changes.
+    - local_date already stored; UI re-buckets using start/end.
+  Owner-only hard path: see delete_trip.
+
+PATCH /rest/v1/trips?id=eq.{id}
+  Allowed fields for admins: name, joining_enabled.
+  is_locked only via lock_trip / unlock_trip RPCs (so the trigger can
+  notify and write the log).
+
+POST /rest/v1/rpc/lock_trip     Body { trip_id }   admin
+POST /rest/v1/rpc/unlock_trip   Body { trip_id }   admin
+POST /rest/v1/rpc/delete_trip   Body { trip_id }   owner only
+  Cascades days, members, expenses, settlements, invites, logs.
+  Storage objects under trips/{trip_id}/ must be deleted too.
+
+GET /rest/v1/rpc/get_trip_invite   Body { trip_id }  admin
+  Returns { invite_token, invite_code, join_path }.
+  Non-admins: 403.
+
+--------------------------------------------------------------------------
+5.E  Members
+--------------------------------------------------------------------------
+
+GET /rest/v1/trip_members?trip_id=eq.{id}
+  All members including removed (UI shows "left the trip").
+  Placeholders: user_id is null.
+
+POST /rest/v1/trip_members
+  Current member may insert a placeholder:
+    { trip_id, display_name, role: 'member', user_id: null }
+  Reject if trip locked.
+  Reject role owner/admin on this path.
+
+PATCH /rest/v1/rpc/set_member_role
+  Admin. Body { member_id, role: 'admin'|'member' }
+  Cannot demote the last owner. Cannot change owner except by a
+  dedicated transfer (out of v1 — do not build transfer).
+
+PATCH /rest/v1/rpc/remove_member
+  Admin. Body { member_id }
+  Sets removed_at = now(). Does not delete expenses or settlements.
+  Soft-removed user no longer matches is_trip_member for writes.
+  They still appear in GET for remaining members.
+
+--------------------------------------------------------------------------
+5.F  Join (Edge Function REST — not PostgREST)
+--------------------------------------------------------------------------
+
+POST /functions/v1/join_trip
+  JWT required (logged-in user).
+  Body: { "code": "K7P2QX" }  OR  { "token": "<long>" }
+        optional "claim_placeholder_id": "<trip_members.id>"
+  Behaviour (ONE transaction):
+    1. Rate-limit by auth.uid() + IP + code/token. 6-char codes are
+       brute-forceable. After N failures, 429.
+    2. Resolve invite. 404 if unknown. 403 if joining_enabled = false
+       or trip locked.
+    3. If caller already has removed_at IS NULL membership -> return
+       existing trip (idempotent).
+    4. If claim_placeholder_id set:
+         - Row must belong to this trip, user_id IS NULL, not removed.
+         - UPDATE trip_members SET user_id = auth.uid(),
+           display_name coalesced, joined_at = now()
+           WHERE id = claim_placeholder_id.
+         - Same id. Expenses/settlements stay valid.
+    5. Else INSERT trip_members role member.
+    6. Activity log + notifications (member_joined or
+       placeholder_claimed).
+  Returns { trip_id, member_id, claimed: boolean }.
+  CORS + verify_jwt = true.
+
+POST /functions/v1/regenerate_invite
+  JWT + admin.
+  Body { "trip_id": "<uuid>" }
+  Rotates token and code. Old link and code die immediately.
+  Returns new { invite_token, invite_code }.
+
+--------------------------------------------------------------------------
+5.G  Expenses (MUST be one transaction)
+--------------------------------------------------------------------------
+
+Do not accept a raw POST /expenses plus a second POST
+/expense_participants from the client as the source of truth. Two
+round trips race with Realtime and can persist AA rows without
+shares. Expose:
+
+POST /rest/v1/rpc/save_expense
+  Body:
+    {
+      "id": null | "<uuid>",            -- null = create
+      "trip_id": "<uuid>",
+      "title": "Ramen dinner",
+      "category": "Food & Drink",
+      "amount": 3000,                   -- minor units
+      "currency": "JPY",
+      "paid_by": "<trip_members.id>",
+      "split_method": "equal" | "exact",
+      "occurred_at": "2026-10-13T14:10:00+09:00",
+      "timezone": "Asia/Tokyo",
+      "end_date": null | "2026-10-15",
+      "location_text": null,
+      "latitude": null,
+      "longitude": null,
+      "photo_path": null,
+      "note": null,
+      "currency_manually_set": false,
+      "expected_updated_at": null | "<timestamptz>",
+      "participants": [
+        { "member_id": "<uuid>", "share_amount": null | 1500 }
+      ]
+    }
+
+  Server steps (single transaction):
+    1. Reject if not current member, or trip locked.
+    2. paid_by and every member_id must belong to trip_id.
+       Removed members may remain on existing expenses but MUST NOT
+       be newly added to To.
+    3. If id is set: UPDATE only if updated_at = expected_updated_at
+       else return 409 conflict with current row (lost update).
+    4. Derive local_date from occurred_at AT TIME ZONE timezone.
+    5. Lock FX:
+         if local_date < current date in Asia/Hong_Kong
+            use fx_rates for that local_date
+         else
+            use latest fx_rates
+         Missing rate -> 422.
+         amount_hkd = round(amount * 10^(-decimals(currency))
+                            * rate * 100) as integer HKD cents
+         using exact numeric, not float.
+       Recalc FX only on create OR when amount, currency or
+       local_date changed.
+    6. Participants:
+         empty array -> personal (delete all participant rows).
+         equal: ignore client share_amount; compute
+                q = amount / n; r = amount % n;
+                first r members by member_id ASC get q+1, rest q.
+         exact: every share_amount required and integer;
+                sum must equal amount else 422.
+         Replace the participant set (delete missing, upsert rest).
+    7. Switching equal <-> exact replaces shares per step 6.
+    8. Touch updated_at = now().
+    9. Write activity_log (create or update, before/after).
+   10. Insert notifications for members in To or paid_by except actor
+       (types expense_added / expense_updated).
+  Returns the expense plus participants.
+
+PATCH /rest/v1/rpc/soft_delete_expense
+  Body { expense_id, expected_updated_at }
+  Sets deleted_at, writes activity_log delete, notifies.
+
+PATCH /rest/v1/rpc/restore_expense
+  Body { expense_id }
+  Current member. Clears deleted_at. Writes activity_log restore.
+  Reject if trip locked.
+
+GET /rest/v1/expenses?trip_id=eq.{id}&deleted_at=is.null
+GET /rest/v1/expense_participants?expense_id=in.({ids})
+  Members of the trip may read.
+
+--------------------------------------------------------------------------
+5.H  Settlements
+--------------------------------------------------------------------------
+
+POST /rest/v1/settlements
+  Required: trip_id, from_member, to_member, debt_currency,
+            debt_amount, paid_currency, paid_amount, paid_at,
+            idempotency_key.
+  fx_rate required when paid_currency != debt_currency.
+  Unique (trip_id, idempotency_key): second insert of the same key
+  returns the original row (200/201), never a second payment.
+  Reject if trip locked, or members not in trip.
+  Trigger: activity_log + notification type settlement_received
+  to to_member's user_id (if not placeholder).
+
+GET /rest/v1/settlements?trip_id=eq.{id}
+
+No UPDATE / DELETE on settlements in v1.
+
+--------------------------------------------------------------------------
+5.I  Activity log
+--------------------------------------------------------------------------
+
+GET /rest/v1/activity_log?trip_id=eq.{id}&order=created_at.desc
+  Members read. No client INSERT (triggers write it).
+
+--------------------------------------------------------------------------
+5.J  Notifications and push
+--------------------------------------------------------------------------
+
+GET   /rest/v1/notifications?user_id=eq.{auth.uid}&order=created_at.desc
+PATCH /rest/v1/notifications?id=eq.{id}   { read_at }
+GET   /rest/v1/notification_settings?user_id=eq.{auth.uid}
+POST  /rest/v1/notification_settings      upsert PK (user_id, type)
+POST  /rest/v1/push_subscriptions
+DELETE /rest/v1/push_subscriptions?id=eq.{id}
+  RLS: own rows only.
+
+Notification types (each togglable):
+  expense_added           expense that includes you
+  expense_updated         expense that includes you edited
+  expense_deleted         expense that includes you soft-deleted
+  settlement_received     repayment recorded to you
+  member_joined
+  placeholder_claimed
+  trip_locked
+
+POST /functions/v1/send_push
+  NOT called by the browser. Invoked by a database webhook /
+  trigger on notifications INSERT. Uses VAPID to push to
+  push_subscriptions for that user_id if the matching setting is
+  enabled. verify_jwt may be false ONLY if the function checks a
+  shared webhook secret. Never leave it fully public.
+
+--------------------------------------------------------------------------
+5.K  FX cron
+--------------------------------------------------------------------------
+
+POST /functions/v1/fetch_fx_rates
+  Not a user API. Called by pg_cron once per day.
+  Fetches mid-market rates (Open Exchange Rates or ExchangeRate-API;
+  Frankfurter only if coverage includes every seeded currency).
+  Upserts fx_rates for rate_date = today (and backfill yesterday if
+  missing) with quote HKD and each seeded base, plus HKD as base if
+  the vendor is USD-based (invert with numeric, not float).
+  Auth: service role or cron secret. One fetch per day is enough.
+
+--------------------------------------------------------------------------
+5.L  Storage REST
+--------------------------------------------------------------------------
+
+Bucket: trip-photos   PRIVATE
+  Path convention: {trip_id}/{expense_id}/{uuid}.jpg
+  Max object size: keep phone-sized; reject > 5 MB.
+
+POST /storage/v1/object/trip-photos/{path}
+GET  /storage/v1/object/sign/trip-photos/{path}
+     Body { expiresIn: 3600 }
+DELETE only via expense photo replace or trip delete.
+
+Storage RLS:
+  INSERT/SELECT/DELETE allowed iff is_trip_member(trip_id parsed
+  from first path segment) AND trip not locked for INSERT/DELETE.
+  No public bucket. No list of the whole bucket.
+
+
+==============================================================================
+6. ROW LEVEL SECURITY
+==============================================================================
+
+Helpers (SECURITY DEFINER, stable, search_path pinned):
+  is_trip_member(tid uuid)  — auth.uid() has trip_members row
+                              user_id = auth.uid() AND removed_at IS NULL
+  is_trip_admin(tid uuid)   — member AND role IN ('owner','admin')
+  is_trip_owner(tid uuid)   — role = 'owner'
+  trip_is_locked(tid uuid)
+
+Policies (minimum)
+
+  profiles            SELECT/UPDATE own id
+  currencies          SELECT authenticated
+  fx_rates            SELECT authenticated
+  trips               SELECT member (incl. removed? NO — current only
+                      for list; detail of a trip the user was removed
+                      from is out of v1)
+                      INSERT via create_trip RPC only
+                      UPDATE admin, and only if not locked except
+                      unlock path
+                      DELETE owner via delete_trip RPC
+  trip_invites        SELECT admin only
+                      ALL via regenerate_invite / create_trip
+  trip_days           SELECT member
+                      INSERT/UPDATE/DELETE admin and not locked
+  trip_members        SELECT member of that trip
+                      INSERT placeholder: member and not locked
+                      UPDATE role/removed: admin via RPCs
+  expenses            SELECT member
+                      INSERT/UPDATE member and not locked
+                      no DELETE policy
+  expense_participants
+                      SELECT member
+                      writes only through save_expense
+  settlements         SELECT member
+                      INSERT member and not locked
+  activity_log        SELECT member
+                      INSERT by trigger only
+  notifications       SELECT/UPDATE own user_id
+                      INSERT by trigger only
+  notification_settings, push_subscriptions
+                      ALL own user_id
+
+Lock rule: FOR UPDATE/INSERT on member-writable tables, policy
+expression includes NOT trip_is_locked(trip_id), except unlock_trip.
+
+
+==============================================================================
+7. TRIGGERS AND SERVER LOGIC
+==============================================================================
+
+  profiles_on_signup
+    After insert on auth.users -> insert profiles.
+
+  expense_before_write  (or body of save_expense)
+    Compute local_date, lock FX, amount_hkd, AA shares / AB sum check.
+
+  activity_log_writer
+    After insert/update on expenses, settlements, trip_members, trips
+    (lock, dates, name), trip_days, trip_invites.
+
+  notification_writer
+    After expense write -> notify other participants + payer.
+    After settlement insert -> notify to_member.
+    After member join/claim -> notify other members.
+    After lock -> notify all current members.
+    Honor notification_settings.enabled.
+
+  send_push_hook
+    After notifications insert -> invoke send_push.
+
+  prevent_hard_delete
+    Block DELETE on expenses, settlements, activity_log.
+
+  touch_updated_at
+    expenses and trips.
+
+Realtime publication
+  Add table replica identity and supabase_realtime publication for:
+    expenses, expense_participants, settlements, trip_members,
+    trips, trip_days, notifications
+  Client filters by trip_id or user_id. Soft delete arrives as UPDATE.
+
+
+==============================================================================
+8. ERROR CONTRACT
+==============================================================================
+
+Use HTTP status + { "error": { "code", "message" } } on RPCs and
+Edge Functions. PostgREST errors stay in its envelope; map these
+codes in RPC bodies so the PWA can branch.
+
+  unauthenticated          401
+  forbidden                403
+  not_found                404
+  trip_locked              423 or 403 with code trip_locked
+  joining_disabled         403
+  conflict_updated_at      409
+  share_sum_mismatch       422
+  fx_rate_missing          422
+  invite_invalid           404
+  rate_limited             429
+  validation_error         422
+  idempotent_replay        200 with original settlement
+
+Never put invite_token, invite_code, service_role, or VAPID private
+key in error bodies or logs.
+
+
+==============================================================================
+9. WHAT THE BACKEND MUST NOT DO
+==============================================================================
+
+  - Compute or persist who-pays-whom suggestion rows.
+  - Persist stats or CSV.
+  - Call Open-Meteo (frontend does weather + geocoding).
+  - Accept JS-number / float amounts.
+  - Expose service_role to the client.
+  - Put backend-as-code in a folder named supabase/.
+  - Deploy via Cloudflare Pages / wrangler.
+  - Magic-link email templates as the only login path.
+  - Offline write queue, OCR, weighted/itemized splits, multi-payer,
+    in-day multi-city, PayMe/FPS, native stores (spec §11).
+  - A BFF on Workers that duplicates PostgREST for v1.
+
+
+==============================================================================
+10. ACCEPTANCE BAR (BACKEND DONE)
+==============================================================================
+
+A 4-person, 2-currency, 4-day trip with:
+  one multi-day hotel,
+  one loan,
+  one personal souvenir,
+  one AB exact-amount meal,
+  one trip date-range edit,
+  one placeholder claim (same trip_members.id),
+  one HKD repayment of a KRW debt (idempotency_key replay does not
+  double-pay),
+must leave the database in a state where:
+  every share_amount set sums to its expense.amount,
+  personal expenses have zero participants,
+  claimed placeholder expenses still point at the same member id,
+  locked trip rejects member writes,
+  invite regenerate invalidates the old code,
+  activity_log has a row for each of the above,
+  Realtime delivers the expense INSERT to a second logged-in member,
+  photo objects are unreachable without a signed URL,
+  invite_code is not present in a member-role GET /trips payload.
+
+Until that bar is green, do not call the backend "v1 done".
+
+
+==============================================================================
+ END
+==============================================================================
