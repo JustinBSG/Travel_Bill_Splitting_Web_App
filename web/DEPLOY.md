@@ -36,7 +36,7 @@ What's in the repo for this:
 | You push to… | Cloudflare… | URL | Uses backend |
 |---|---|---|---|
 | the **production branch** (`main`) | builds with `PROD_*` values and **deploys**, replacing the live site | `https://travel-bill-split.<subdomain>.workers.dev` (+ custom domain) | production |
-| any other branch (`uat`, `frontend`, …) | builds with `STAGING_*` values and uploads a **preview version**; the live site is unchanged | a preview URL shown in the build, e.g. `https://<branch-or-id>-travel-bill-split.<subdomain>.workers.dev` | staging |
+| any other branch (`uat`, `frontend`, …) | builds with `STAGING_*` values and updates that branch's **Preview**; the live site is unchanged | `https://<branch>-travel-bill-split.<subdomain>.workers.dev` (e.g. `uat-travel-bill-split…`) | staging |
 
 So **yes**, a push to `main` updates production automatically, usually within 1–3 minutes, and
 pushes to other branches never touch production.
@@ -122,6 +122,36 @@ Worker → **Settings** → **Build** → **Branch control**:
 - **Build watch paths** (if shown): include `web/*`, so backend-only pushes skip the build.
 
 ## 6. Find your URLs
+
+### Staging frontend = the `uat` Preview (no production branch needed)
+
+With **Enable Preview Builds** ticked, every push to `uat` runs the build with the `STAGING_*`
+values, then `npx wrangler preview`. That creates or updates a Preview named after the branch:
+
+- **Preview URL**, always the latest `uat` build:
+  `https://uat-travel-bill-split.<subdomain>.workers.dev`. This is your staging site.
+- **Deployment URL**, one fixed build: `https://<deployment-id>-travel-bill-split.<subdomain>.workers.dev`.
+
+You don't need a production deployment first: Cloudflare can create a Preview before the Worker
+has ever been deployed to production. The Worker page's preview dropdown shows each Preview's
+deployments. Delete one you no longer need with `npx wrangler preview delete --name <branch>`,
+run inside `web/`.
+
+To make a Preview by hand without pushing (optional), run inside `web/`. First sign in to
+Cloudflare:
+```bash
+npx wrangler login
+```
+Put the staging values in `web/.env.local`, then build:
+```bash
+npm run build
+```
+Create or update the Preview:
+```bash
+npx wrangler preview --name uat
+```
+
+### Production and other URLs
 
 - **Production:** Worker → **Settings** → **Domains & Routes** shows
   `travel-bill-split.<subdomain>.workers.dev`. `<subdomain>` is your account's workers.dev
