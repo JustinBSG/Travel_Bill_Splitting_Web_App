@@ -42,7 +42,7 @@ variables, auto-deploy on push to `main`, releases and rollback.
 src/
   app/            routes (App.tsx), trip shell (swipe + calendar tab strip), theme, install prompt, shared UI
   features/
-    auth/         email OTP (code typed in-app, never magic links), Google, Apple, first-login profile
+    auth/         email OTP (code typed in-app, never magic links), Google, first-login profile
     trips/        My Trips, create trip + per-date locations, join, overview, weather, trip settings, CSV export
     expenses/     expense pages, rows ("what it means for me"), form (AA / AB split), photos (EXIF stripped via canvas)
     settlement/   conclusion stats, balances, who-pays-whom, mark as paid

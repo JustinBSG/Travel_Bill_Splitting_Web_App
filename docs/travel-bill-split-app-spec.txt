@@ -68,7 +68,7 @@ Frontend  (all application UI code lives in web/)
   - Hosted on Cloudflare Pages (auto-deploy on git push; root = web)
 
 Backend + Database (all backend-as-code lives in backend/)
-  - Supabase Auth: login (email code, Google, Apple)
+  - Supabase Auth: login (email code, Google)
   - Supabase Postgres: all app data
   - Row Level Security (RLS): each user only sees trips they belong to
   - Supabase Storage: photo proof images
@@ -178,7 +178,7 @@ Example: 4-day trip, 12-15 Oct
 ------------------------------------------------------------------------------
 5.2 Easy login
 ------------------------------------------------------------------------------
-- Options: Email 6-digit code (OTP), Sign in with Google, Sign in with Apple.
+- Options: Email 6-digit code (OTP), Sign in with Google. (Sign in with Apple was dropped.)
 - Use a code typed into the app, NOT a magic link. On iOS a magic link opens
   in Safari instead of the installed app, so the user gets logged in in the
   wrong place.
@@ -707,7 +707,7 @@ Phase 1  Foundation
   - Repo folders: web/ (frontend), backend/ (migrations + Edge Functions)
   - Supabase project, database tables, RLS (code in backend/)
   - PWA setup in web/ (manifest, icons, install banner/button)
-  - Login (email code, Google, Apple)
+  - Login (email code, Google)
   - Languages framework (EN / Traditional Chinese)
 
 Phase 2  Trips

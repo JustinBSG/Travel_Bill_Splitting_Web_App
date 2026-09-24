@@ -74,7 +74,7 @@ export function LoginPage() {
     // On success onAuthStateChange sets the session and we redirect.
   }
 
-  async function oauth(provider: 'google' | 'apple') {
+  async function oauth(provider: 'google') {
     setBusy(true)
     setError(null)
     const { error } = await supabase.auth.signInWithOAuth({
@@ -111,9 +111,6 @@ export function LoginPage() {
             </button>
             <button type="button" className="btn btn-block btn-large" disabled={busy} onClick={() => oauth('google')}>
               {t('auth.google')}
-            </button>
-            <button type="button" className="btn btn-block btn-large" disabled={busy} onClick={() => oauth('apple')}>
-              {t('auth.apple')}
             </button>
             {iosPwa && <p className="muted small">{t('auth.iosOauthHint')}</p>}
           </div>

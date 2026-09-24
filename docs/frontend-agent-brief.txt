@@ -150,7 +150,7 @@ Locked trip (is_locked = true)
 ==============================================================================
 
 3.1 Login
-  Buttons: Email code, Google, Apple.
+  Buttons: Email code, Google. (Apple dropped.)
   Email flow: enter email -> receive 6-digit OTP -> type code in the app.
   Persist session (supabase persistSession).
   First login: force display_name; language defaults to device locale
@@ -499,7 +499,7 @@ excludes removed_at != null.
 8. PHASE ORDER (FRONTEND)
 ==============================================================================
 
-  F1  Vite app in web/ (not test/frontend), PWA, i18n shell, router, auth OTP/Google/Apple
+  F1  Vite app in web/ (not test/frontend), PWA, i18n shell, router, auth OTP/Google
   F2  My Trips, create trip + per-date locations, join link/code, Overview + weather
   F3  Expense pages + form + personal + multi-day + FX display + photos
   F4  Conclusion stats + both settlement views + mark paid

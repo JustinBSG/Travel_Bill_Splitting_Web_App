@@ -11,7 +11,7 @@ export const supabase = createClient(url || 'http://localhost:54321', anonKey ||
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true, // OAuth (Google/Apple) PKCE return
+    detectSessionInUrl: true, // OAuth (Google) PKCE return
     flowType: 'pkce',
     storageKey: 'tbs-auth',
   },

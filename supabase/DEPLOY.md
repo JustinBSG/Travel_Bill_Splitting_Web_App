@@ -256,7 +256,7 @@ which check their own secrets.
     link instead of a code, click it **in the same browser** where you requested it. It opens the
     **Site URL** (set it to where you test: `http://localhost:5173` or the staging preview URL),
     and the app finishes signing in.
-- **SMTP, Google/Apple and URL Configuration:** see the table in F.
+- **SMTP, Google sign-in and URL Configuration:** see the table in F.
 
 ### D8. Load exchange rates
 ```bash
@@ -334,7 +334,7 @@ these differences:
 | Auth → Site URL | `http://localhost:5173` | `https://<CUSTOM_DOMAIN>` (or the workers.dev URL) |
 | Auth → Redirect URLs | `http://localhost:5173/**`, `https://*-travel-bill-splitting-web-app.<SUBDOMAIN>.workers.dev/**` | `https://travel-bill-splitting-web-app.<SUBDOMAIN>.workers.dev/**`, `https://<CUSTOM_DOMAIN>/**` |
 | SMTP (Authentication → Emails → SMTP Settings) | built-in is OK | **custom SMTP required** (Resend, Postmark, …). The built-in sender allows only a few emails per hour |
-| Google / Apple | optional | configure both; callback `https://<PROD_REF>.supabase.co/auth/v1/callback` |
+| Google sign-in | optional | configure it; callback `https://<PROD_REF>.supabase.co/auth/v1/callback` |
 | Vault `project_url` | `https://<STAGING_REF>.supabase.co` | `https://<PROD_REF>.supabase.co` |
 
 Then verify production:

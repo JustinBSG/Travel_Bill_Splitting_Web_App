@@ -5,7 +5,7 @@
 # supabase/DEPLOY.md). Template paths below are relative to the repo root.
 #
 # This file drives LOCAL development (`supabase start`) and function settings
-# on deploy. Production Auth (site URL, redirect allowlist, Google / Apple,
+# on deploy. Production Auth (site URL, redirect allowlist, Google,
 # email OTP) is configured in the Dashboard, as the requirements say.
 
 project_id = "travel-bill-split"
@@ -91,18 +91,14 @@ content_path = "./supabase/templates/otp_code.html"
 [auth.sms]
 enable_signup = false
 
-# Google and Apple sign-in. Enable locally by exporting the env vars below;
-# in production turn them on in the Dashboard (Authentication > Providers).
+# Google sign-in (the only social login; Apple was dropped). Enable locally by
+# exporting the env vars below; in production turn it on in the Dashboard
+# (Authentication > Providers).
 [auth.external.google]
 enabled = false
 client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
 secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
 skip_nonce_check = true
-
-[auth.external.apple]
-enabled = false
-client_id = "env(SUPABASE_AUTH_EXTERNAL_APPLE_CLIENT_ID)"
-secret = "env(SUPABASE_AUTH_EXTERNAL_APPLE_SECRET)"
 
 [edge_runtime]
 enabled = true

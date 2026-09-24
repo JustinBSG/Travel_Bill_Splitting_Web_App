@@ -52,7 +52,7 @@ Secrets (Edge Function / Vault only; never in web/)
 
 Auth configuration (Dashboard, not code)
   Email OTP 6-digit code. Disable magic links for the PWA.
-  Providers: email, Google, Apple.
+  Providers: email, Google. (Apple dropped.)
   Site URL + redirect allowlist: localhost Vite origin, Pages prod,
   Pages preview, custom frontend domain.
   Session: persist + auto-refresh on the client. Server validates JWT
@@ -345,7 +345,7 @@ POST /auth/v1/verify
 POST /auth/v1/token?grant_type=refresh_token
   Body { refresh_token }
 
-GET  /auth/v1/authorize?provider=google|apple
+GET  /auth/v1/authorize?provider=google
   OAuth start. Callback is Supabase Auth, not Cloudflare.
 
 POST /auth/v1/logout
