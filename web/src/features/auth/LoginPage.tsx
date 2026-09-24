@@ -74,11 +74,11 @@ export function LoginPage() {
     // On success onAuthStateChange sets the session and we redirect.
   }
 
-  async function oauth(provider: 'google') {
+  async function signInWithGoogle() {
     setBusy(true)
     setError(null)
     const { error } = await supabase.auth.signInWithOAuth({
-      provider,
+      provider: 'google',
       options: { redirectTo: `${window.location.origin}${next}` },
     })
     if (error) {
@@ -109,7 +109,7 @@ export function LoginPage() {
             <button type="button" className="btn btn-primary btn-block btn-large" onClick={() => setStep('email')}>
               <Icon name="mail" size={20} /> {t('auth.emailCode')}
             </button>
-            <button type="button" className="btn btn-block btn-large" disabled={busy} onClick={() => oauth('google')}>
+            <button type="button" className="btn btn-block btn-large" disabled={busy} onClick={() => signInWithGoogle()}>
               {t('auth.google')}
             </button>
             {iosPwa && <p className="muted small">{t('auth.iosOauthHint')}</p>}
