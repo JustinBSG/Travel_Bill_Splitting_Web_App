@@ -4,6 +4,7 @@ import { Link, Navigate, useNavigate, useParams } from 'react-router'
 import { ExpensePage } from '../features/expenses/ExpensePage'
 import { BellButton } from '../features/notifications/BellButton'
 import { LanguageSwitch } from '../features/settings/LanguageSwitch'
+import { ThemeSwitch } from '../features/settings/ThemeSwitch'
 import { ConclusionPage } from '../features/settlement/ConclusionPage'
 import { OverviewPage } from '../features/trips/OverviewPage'
 import { useTripData } from '../features/trips/TripDataContext'
@@ -239,6 +240,8 @@ export function TripShell() {
           <div className="menu-language">
             <span className="section-title">{t('settings.language')}</span>
             <LanguageSwitch />
+            <span className="section-title">{t('settings.theme')}</span>
+            <ThemeSwitch />
           </div>
         </Modal>
       )}

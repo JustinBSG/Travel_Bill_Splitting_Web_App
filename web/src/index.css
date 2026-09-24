@@ -27,7 +27,7 @@
   --safe-left: env(safe-area-inset-left, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
 
-  color-scheme: light dark;
+  color-scheme: light;
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'PingFang HK', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
   font-size: 16px;
   line-height: 1.45;
@@ -37,9 +37,11 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0b1120;
+/* data-theme is always the resolved theme ('light' | 'dark'), set by the
+   inline script in index.html before first paint and by app/theme.ts. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0b1120;
     --surface: #111827;
     --surface-2: #1f2937;
     --text: #e5e7eb;
@@ -59,7 +61,6 @@
     --lock-bg: #2e1065;
     --lock-text: #ddd6fe;
     --shadow: none;
-  }
 }
 
 *,
@@ -1148,6 +1149,9 @@ textarea {
   padding: 4px;
   border-radius: 12px;
   background: var(--surface-2);
+}
+.segmented-3 {
+  grid-template-columns: repeat(3, 1fr);
 }
 .segmented button {
   min-height: 40px;

@@ -9,6 +9,7 @@ import { useAuth, useUser } from '../auth/AuthContext'
 import { NOTIFICATION_TYPES, type NotificationType } from '../notifications/notificationTypes'
 import { currentPushSubscription, disablePush, enablePush, pushSupport } from '../notifications/push'
 import { LanguageSwitch } from './LanguageSwitch'
+import { ThemeSwitch } from './ThemeSwitch'
 
 async function fetchPrefs(userId: string): Promise<Record<string, boolean>> {
   const { data } = await supabase.from('notification_settings').select('user_id, type, enabled').eq('user_id', userId)
@@ -113,6 +114,10 @@ export function SettingsPage() {
           <div className="field">
             <span>{t('settings.language')}</span>
             <LanguageSwitch />
+          </div>
+          <div className="field">
+            <span>{t('settings.theme')}</span>
+            <ThemeSwitch />
           </div>
           <p className="muted small">{user.email}</p>
         </section>
