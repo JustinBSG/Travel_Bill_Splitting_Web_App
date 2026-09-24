@@ -17,7 +17,7 @@ npm run dev
 | --- | --- |
 | `npm run dev` | Vite dev server |
 | `npm run build` | Type-check (`tsc -b`) + production build to `dist/` (with service worker) |
-| `npm test` | Unit tests (Vitest): money, settlement, dates, csv, stats |
+| `npm test` | Unit tests (Vitest): money, settlement, dates, csv, stats, AB split |
 | `npm run lint` | ESLint (incl. React Compiler hook rules) |
 | `node scripts/generate-icons.mjs` | Regenerate the PWA PNG icons in `public/` |
 
@@ -40,9 +40,10 @@ src/
   features/
     auth/         email OTP (code typed in-app, never magic links), Google, Apple, first-login profile
     trips/        My Trips, create trip + per-date locations, join, overview, weather, trip settings, CSV export
-    expenses/     expense pages, rows ("what it means for me"), form, photos (EXIF stripped via canvas)
+    expenses/     expense pages, rows ("what it means for me"), form (AA / AB split), photos (EXIF stripped via canvas)
     settlement/   conclusion stats, balances, who-pays-whom, mark as paid
-    members/  activity/  notifications/  settings/
+    settings/     profile, notification toggles, push, shared LanguageSwitch (also used in the trip menu)
+    members/  activity/  notifications/
   lib/
     money.ts      integer minor units via decimal.js — no float math on money
     settlement.ts nets per currency, greedy matching, All-in-HKD, HKD payment allocation (pure, tested)
@@ -77,6 +78,9 @@ src/
   - All-in-HKD line: first clears matching currency debts between the two people (e.g. a KRW debt paid in HKD),
     the remainder is recorded as an HKD debt. All rows go in one insert.
 - **Suggestions are never stored**; they are recomputed from nets after every change (realtime).
+- **Language** (English / 繁體中文): detected from the device, switchable on the login page, at first
+  login, in Settings and in the trip menu (⋯). It switches immediately and is saved to `profiles.language`.
+  Titles/notes stay as typed; category names are translated.
 - Soft delete only (`deleted_at`), with Undo toast and Restore from the Activity log.
 - Locked trip: all write controls hidden/disabled; admins can still unlock in Trip settings.
 
@@ -97,8 +101,7 @@ assumptions. Each one is isolated in a single file so it's easy to adjust.
    - AB (`split_method = 'exact'`): rows are upserted with `share_amount` (`on_conflict = expense_id,member_id`).
      The backend must keep these values (not re-split) and should check they add up to `amount`.
      The Conclusion page also flags any expense whose shares don't add up.
-   - **Scope note:** uneven/itemized splits are listed as "not in v1" in the spec (§11). AB was added at the
-     product owner's request, so the backend needs the new `split_method` column (text, default `'equal'`).
+   - AB is part of spec v1.1 (§5.8): the backend needs the `split_method` column (text, default `'equal'`).
 3. `created_by` columns are not sent; expected `DEFAULT auth.uid()`.
 4. **Trip creation** (`features/trips/tripApi.ts`): the client generates the trip id, inserts `trips` without
    RETURNING, then inserts the creator's `owner` membership only if a trigger hasn't already created it.
@@ -121,7 +124,7 @@ assumptions. Each one is isolated in a single file so it's easy to adjust.
     Add the site URL (with `/**`) to Auth redirect URLs for Google/Apple.
 12. **Storage**: private bucket `expense-photos`, object path `<trip_id>/<uuid>.jpg`; policies by trip membership on
     the first path segment. The UI only uses signed URLs.
-13. **Web Push**: needs `VITE_VAPID_PUBLIC_KEY` (not in the brief's env list). `send_push` should send JSON
+13. **Web Push**: needs `VITE_VAPID_PUBLIC_KEY` (brief §1). `send_push` should send JSON
     `{ title, body, url }`; `public/push-sw.js` shows it and opens `url` when tapped.
 14. **Realtime**: the publication should include `expenses, expense_participants, settlements, trip_members,
     trips, trip_days, notifications`. `expense_participants` has no `trip_id`, so it is subscribed unfiltered
