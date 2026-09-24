@@ -1,10 +1,12 @@
 ==============================================================================
  TRAVEL BILL SPLIT — FRONTEND AGENT BRIEF
  For another AI / engineer implementing the React PWA only
- Version: 1.2
+ Version: 1.3
  Date: 2026-09-24
- Source of truth: travel-bill-split-app-spec.txt (v1.2 + section 12 freeze)
+ Source of truth: travel-bill-split-app-spec.txt (v1.3 + section 12 freeze)
  Change log:
+   1.3  Appearance: System / Light / Dark in Settings and the trip menu.
+        See 2, 6.
    1.2  Language switch in the trip menu; VITE_VAPID_PUBLIC_KEY env var;
         Vitest as the test runner. See 1, 2, 6.
    1.1  Added AB split (exact amounts per person) next to AA equal split.
@@ -109,7 +111,7 @@ App-level routes
   /trips                         My Trips + Create + Join with code
   /join/:token                   invite link landing
   /notifications
-  /settings                      name, language, notification toggles
+  /settings                      name, language, appearance, notification toggles
   /trips/:tripId                 trip shell (swipe / tab bar)
 
 Inside a trip, pages IN THIS ORDER
@@ -125,6 +127,7 @@ Trip menu (not in the swipe strip)
   Trip Settings                  admin only
   Export CSV
   Language                       English / 繁體中文 switch (same as Settings)
+  Appearance                     System / Light / Dark switch (same as Settings)
 
 Example 4-day trip 12-15 Oct:
   Overview | Pre-trip | 12 Oct | 13 Oct | 14 Oct | 15 Oct | Post-trip | Conclusion
@@ -439,6 +442,10 @@ excludes removed_at != null.
   - Language switch on login, first login, Settings and the trip menu;
     switches immediately and saves profiles.language; format
     dates/numbers/currency for locale
+  - Appearance: System (default, follows prefers-color-scheme live) /
+    Light / Dark. Saved per device (localStorage 'tbs-theme'), applied as
+    <html data-theme="light|dark"> by an inline script before first paint
+    (no flash); theme-color meta follows the top bar colour
   - User-typed titles/notes stay as typed (no translation)
   - Category names ARE translated
   - Reduced motion: disable page-swipe animation if prefers-reduced-motion

@@ -81,6 +81,10 @@ src/
 - **Language** (English / 繁體中文): detected from the device, switchable on the login page, at first
   login, in Settings and in the trip menu (⋯). It switches immediately and is saved to `profiles.language`.
   Titles/notes stay as typed; category names are translated.
+- **Appearance** (System / Light / Dark) in Settings and the trip menu. System follows the phone live.
+  Saved per device (`localStorage` key `tbs-theme`, not the profile). An inline script in `index.html`
+  sets `<html data-theme>` before first paint; `src/app/theme.ts` keeps it in sync. Dark colours are the
+  `:root[data-theme='dark']` tokens in `src/index.css`.
 - Soft delete only (`deleted_at`), with Undo toast and Restore from the Activity log.
 - Locked trip: all write controls hidden/disabled; admins can still unlock in Trip settings.
 
