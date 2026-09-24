@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, type ReactNode } from 'react'
+import { useEffect, useEffectEvent, useId, useRef, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Icon } from './Icon'
 
@@ -14,17 +14,24 @@ export function Modal({ title, onClose, children, footer }: Props) {
   const { t } = useTranslation()
   const titleId = useId()
   const panel = useRef<HTMLDivElement>(null)
+  // Callers pass an inline onClose, a new function on every render. As an
+  // effect event it stays current without re-running the effect below, which
+  // would pull focus out of a field in the dialog on each keystroke.
+  const onKey = useEffectEvent((e: KeyboardEvent) => {
+    if (e.key === 'Escape') onClose()
+  })
 
+  // Once per open: focus moves into the dialog, and back where it was on close.
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     document.addEventListener('keydown', onKey)
     const prev = document.activeElement as HTMLElement | null
-    panel.current?.focus()
+    // A field that focused itself (autoFocus) keeps focus.
+    if (!panel.current?.contains(prev)) panel.current?.focus()
     return () => {
       document.removeEventListener('keydown', onKey)
       prev?.focus?.()
     }
-  }, [onClose])
+  }, [])
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
