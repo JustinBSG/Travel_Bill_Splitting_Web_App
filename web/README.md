@@ -28,7 +28,11 @@ Env vars (all public, shipped to the browser — never put the service_role key 
 
 ## Deploy (Cloudflare Pages)
 
+Full instructions: **[DEPLOY.md](DEPLOY.md)**. That covers project setup, Production vs Preview
+variables, auto-deploy on push to `main`, releases and rollback.
+
 - Root directory: `web` · Build command: `npm run build` · Output: `dist` · Deploy command: empty
+- Pushes to `main` deploy production automatically; other branches get preview URLs (staging backend)
 - SPA fallback for `/join/:token` works because there is **no** top-level `404.html`
   (Pages then serves `index.html` for unknown paths). Don't add one.
 

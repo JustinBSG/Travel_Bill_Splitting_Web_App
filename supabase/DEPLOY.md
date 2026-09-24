@@ -331,6 +331,8 @@ Then verify production:
 
 ## G. Connect the frontend (Cloudflare Pages)
 
+Step-by-step Pages setup, auto-deploys and frontend releases: **[web/DEPLOY.md](../web/DEPLOY.md)**.
+
 Set these in the Pages project, under **Settings → Variables and Secrets** (older layouts:
 *Environment variables*):
 
