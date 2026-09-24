@@ -787,6 +787,15 @@ textarea {
 .login-brand img {
   border-radius: 18px;
 }
+.menu-language {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
 .lang-switch {
   display: flex;
   justify-content: center;

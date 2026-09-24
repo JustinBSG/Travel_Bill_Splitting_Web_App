@@ -3,12 +3,12 @@ import { useTranslation } from 'react-i18next'
 import { useInstallPrompt } from '../../app/install'
 import { useToast } from '../../app/ui/toast'
 import { ErrorBox, PageHeader } from '../../app/ui/common'
-import { setLanguage } from '../../lib/i18n'
 import { supabase } from '../../lib/supabase'
-import type { Language, NotificationSetting } from '../../lib/types'
+import type { NotificationSetting } from '../../lib/types'
 import { useAuth, useUser } from '../auth/AuthContext'
 import { NOTIFICATION_TYPES, type NotificationType } from '../notifications/notificationTypes'
 import { currentPushSubscription, disablePush, enablePush, pushSupport } from '../notifications/push'
+import { LanguageSwitch } from './LanguageSwitch'
 
 async function fetchPrefs(userId: string): Promise<Record<string, boolean>> {
   const { data } = await supabase.from('notification_settings').select('user_id, type, enabled').eq('user_id', userId)
@@ -18,7 +18,7 @@ async function fetchPrefs(userId: string): Promise<Record<string, boolean>> {
 }
 
 export function SettingsPage() {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const toast = useToast()
   const user = useUser()
   const { profile, refreshProfile, signOut } = useAuth()
@@ -56,12 +56,6 @@ export function SettingsPage() {
       await refreshProfile()
       toast.show(t('settings.saved'), { tone: 'success' })
     }
-  }
-
-  async function changeLanguage(lang: Language) {
-    setLanguage(lang)
-    const { error } = await supabase.from('profiles').update({ language: lang }).eq('id', user.id)
-    if (error) setError(error.message)
   }
 
   async function togglePref(type: NotificationType, enabled: boolean) {
@@ -116,13 +110,10 @@ export function SettingsPage() {
               </button>
             </div>
           </label>
-          <label className="field">
+          <div className="field">
             <span>{t('settings.language')}</span>
-            <select value={i18n.language === 'zh-Hant' ? 'zh-Hant' : 'en'} onChange={(e) => void changeLanguage(e.target.value as Language)}>
-              <option value="en">English</option>
-              <option value="zh-Hant">繁體中文</option>
-            </select>
-          </label>
+            <LanguageSwitch />
+          </div>
           <p className="muted small">{user.email}</p>
         </section>
 
