@@ -1,6 +1,6 @@
 -- pgTAP · behaviour on the real database. Run with the Supabase CLI:
---     node backend/scripts/supabase.mjs test db            (local stack)
---     node backend/scripts/supabase.mjs test db --linked   (deployed project)
+--     npx supabase test db            (local stack)
+--     npx supabase test db --linked   (deployed project)
 -- Creates throwaway users and a trip inside ONE transaction and rolls it all
 -- back at the end, so it is safe on a deployed project (queued pg_net calls
 -- are rolled back too). Acts as a signed-in user the way PostgREST does:

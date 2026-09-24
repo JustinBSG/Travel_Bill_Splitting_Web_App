@@ -1,4 +1,4 @@
-// Runs the pgTAP files in backend/tests/ (what `supabase test db` runs on a
+// Runs the pgTAP files in supabase/tests/ (what `supabase test db` runs on a
 // real Supabase database) against PGlite + the platform stubs, so they are
 // exercised offline too. Each file is one transaction that rolls back.
 import assert from 'node:assert/strict'

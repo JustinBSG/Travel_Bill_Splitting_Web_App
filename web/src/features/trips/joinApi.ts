@@ -1,4 +1,4 @@
-// join_trip Edge Function client (backend/functions/join_trip).
+// join_trip Edge Function client (supabase/functions/join_trip).
 //   join_trip({ token | code, preview: true })
 //     -> { trip_id, trip: {id,name,start_date,end_date}, placeholders: [{id, display_name}],
 //          already_member, joining_enabled }        (joins nothing)

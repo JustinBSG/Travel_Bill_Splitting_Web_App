@@ -1,5 +1,5 @@
 // Shared setup for the live end-to-end tests (real Supabase over HTTP).
-// Settings come from the environment or backend/node-tests/.env.live
+// Settings come from the environment or supabase/node-tests/.env.live
 // (git-ignored; copy .env.live.example).
 import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -28,7 +28,7 @@ const missing = ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY
 
 /** Why the live suite can't run here, or false. It writes users and trips, so remote targets need opt-in. */
 export const skipReason = missing.length
-  ? `live tests need ${missing.join(', ')} (see backend/DEPLOY.md)`
+  ? `live tests need ${missing.join(', ')} (see supabase/DEPLOY.md)`
   : !isLocal && !cfg.allowRemote
     ? `${cfg.url} is not local: set LIVE_ALLOW_REMOTE=1 to run against a staging project (never production)`
     : false

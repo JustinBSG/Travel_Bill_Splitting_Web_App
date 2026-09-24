@@ -23,7 +23,7 @@ export const PHOTO_BUCKET = 'trip-photos'
 export const VAPID_PUBLIC_KEY = (import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined) || ''
 
 /**
- * Backend error codes (backend/README.md "Errors"). RPCs return them as the
+ * Backend error codes (supabase/README.md "Errors"). RPCs return them as the
  * PostgREST error `code`; Edge Functions as `{ error: { code, message } }`.
  * validation_error keeps the server's message, which names the field.
  */

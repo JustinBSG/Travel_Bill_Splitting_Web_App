@@ -98,7 +98,7 @@ src/
 
 ## Backend contract
 
-The backend lives in [`../backend`](../backend/README.md) (Supabase: migrations, RLS, RPCs, Edge Functions).
+The backend lives in [`../supabase`](../supabase/README.md) (Supabase: migrations, RLS, RPCs, Edge Functions).
 All calls are isolated in the `*Api.ts` files:
 
 - **Trips** (`features/trips/tripApi.ts`): `rpc/create_trip` (trip + days + owner + invite in one transaction),

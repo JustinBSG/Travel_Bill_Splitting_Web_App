@@ -5,7 +5,7 @@ and spec §6–9 and §12. Everything runs on one Supabase project: Auth, Postgr
 Realtime, Edge Functions and pg_cron. There is no Node server.
 
 ```
-backend/
+supabase/
   config.toml                 CLI config: local dev, function verify_jwt, OTP email template
   migrations/
     20260924100000_schema.sql        tables, constraints, indexes, currency seed
@@ -21,45 +21,43 @@ backend/
     .env.example              every Edge Function secret
   templates/otp_code.html     email OTP template (6-digit code, no link)
   seed.sql                    local-only sample FX rates
-  scripts/supabase.mjs        CLI bridge (see below)
   tests/                      pgTAP tests, run by `supabase test db` on the real database
   node-tests/                 Node tests: offline/ (PGlite, no Supabase needed), live/ (HTTP end-to-end)
-  DEPLOY.md                   step-by-step deploy, verification and troubleshooting
+  DEPLOY.md                   first-time setup: local, staging, production, troubleshooting
+  RELEASE.md                  shipping updates to production: checklist, versioning, rollback
 ```
 
-## The CLI bridge (why there's a script)
+## Running the Supabase CLI
 
-The Supabase CLI always reads `<workdir>/supabase/config.toml`, and the requirements forbid a folder
-named `supabase/`. So `supabase --workdir backend` cannot work as written. Instead, `scripts/supabase.mjs`
-links `<os temp>/travel-bill-split-supabase/<hash>/supabase → backend/`, then runs
-`supabase --workdir <that dir> …`. The link lives outside the repo so no tool walks into a loop. CLI
-state such as the linked project ref is saved in `backend/.temp/` (git-ignored). Relative file
-arguments like `--env-file backend/functions/.env` are turned into absolute paths. Use it anywhere
-you would type `supabase`:
+This folder is the CLI's standard `supabase/` project folder, so run the CLI from the repo root and
+it finds `supabase/config.toml` by itself. Use an installed `supabase` or `npx supabase` (no
+install needed):
 
 ```bash
-node backend/scripts/supabase.mjs db push
+npx supabase --version
 ```
 
-It uses `supabase` from PATH, or whatever is in `SUPABASE_BIN` (for example `SUPABASE_BIN="npx supabase"`).
+CLI state such as the linked project ref is saved in `supabase/.temp/` (git-ignored).
 
-## Deploy
+## Deploy and release
 
-Step-by-step instructions are in **[DEPLOY.md](DEPLOY.md)**: create the project, link, `db push`,
-Vault and function secrets, `functions deploy`, Auth settings, first FX fetch, verification,
-connecting the frontend, shipping later changes, the local stack and troubleshooting. In short:
+- **[DEPLOY.md](DEPLOY.md)**: first-time setup. Local stack, then a **staging** project, then
+  **production**, each with its own keys and secrets. Covers Vault, function secrets, Auth
+  settings, the first FX fetch, verification, Cloudflare Pages variables and troubleshooting.
+- **[RELEASE.md](RELEASE.md)**: shipping a new version to production. Covers semantic-version
+  tags, safe migrations (expand then contract), the staging-then-production checklist, rollback
+  and hotfixes.
+
+Every deploy command names its target explicitly:
 
 ```bash
-node backend/scripts/supabase.mjs link --project-ref <PROJECT_REF>
+npx supabase db push --project-ref <REF>
 ```
 ```bash
-node backend/scripts/supabase.mjs db push
+npx supabase secrets set --project-ref <REF> --env-file supabase/functions/.env.staging
 ```
 ```bash
-node backend/scripts/supabase.mjs secrets set --env-file backend/functions/.env
-```
-```bash
-node backend/scripts/supabase.mjs functions deploy --use-api
+npx supabase functions deploy --use-api --project-ref <REF>
 ```
 
 Scheduled jobs (pg_cron): `fetch-fx-rates` runs at 16:10 UTC (00:10 HKT) and `fetch-fx-rates-retry`
@@ -70,9 +68,9 @@ at 22:10 UTC. The retry skips the vendor call when today's rates are already sto
 
 | Suite | Runs against | Command |
 |---|---|---|
-| `node-tests/offline/` | PGlite (Postgres 18 in WASM) + stand-ins for Supabase's `auth`, `storage`, `vault`, `pg_net`, `pg_cron`. No Supabase or Docker needed | `cd backend/node-tests && npm install && npm test` |
-| `tests/*.test.sql` (pgTAP) | the real database, local or deployed; one transaction per file, rolled back | `node backend/scripts/supabase.mjs test db [--linked]` |
-| `node-tests/live/` | the real HTTP API of the local stack or a **staging** project | `cd backend/node-tests && npm run test:live` |
+| `node-tests/offline/` | PGlite (Postgres 18 in WASM) + stand-ins for Supabase's `auth`, `storage`, `vault`, `pg_net`, `pg_cron`. No Supabase or Docker needed | `cd supabase/node-tests && npm install && npm test` |
+| `tests/*.test.sql` (pgTAP) | the real database, local or deployed; one transaction per file, rolled back | `npx supabase test db [--linked]` |
+| `node-tests/live/` | the real HTTP API of the local stack or a **staging** project | `cd supabase/node-tests && npm run test:live` |
 
 - **Offline** (34 tests): `acceptance.test.mjs` plays the §10 acceptance trip. That's 4 people,
   KRW + HKD, 4 days, a multi-day hotel, a loan, a personal souvenir, an AB meal, a date-range

@@ -1,6 +1,6 @@
--- pgTAP · platform checks. Run with the Supabase CLI (see backend/DEPLOY.md):
---     node backend/scripts/supabase.mjs test db            (local stack)
---     node backend/scripts/supabase.mjs test db --linked   (deployed project)
+-- pgTAP · platform checks. Run with the Supabase CLI (see supabase/DEPLOY.md):
+--     npx supabase test db            (local stack)
+--     npx supabase test db --linked   (deployed project)
 -- Read-only checks that the migrations produced the right grants, RLS,
 -- storage, realtime and cron setup on the real platform. Rolled back.
 begin;

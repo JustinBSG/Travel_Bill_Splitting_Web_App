@@ -1,314 +1,377 @@
-# Deploy and test the backend on Supabase
+# Deploy the backend: local → staging → production
 
-This takes you from zero to a working production backend, then shows how to verify it and how to
-ship changes afterwards. Run every command from the **repo root**. The Supabase CLI always goes
-through `node backend/scripts/supabase.mjs …`, because the repo can't have a `supabase/` folder
-(see [README](README.md#the-cli-bridge-why-theres-a-script)).
+This is the first-time setup: from nothing to a tested staging project and a live production
+project. To ship **updates** to production afterwards, see [RELEASE.md](RELEASE.md).
+
+Run every command from the **repo root**; the CLI finds `supabase/config.toml` there. Commands use
+`npx supabase …`, which downloads the CLI on first use. If you installed the CLI, plain
+`supabase …` works the same. On Windows PowerShell, type `curl.exe` (plain `curl` is a different
+command there) and `Copy-Item` instead of `cp`.
 
 **Contents**
-1. [Prerequisites](#1-prerequisites)
-2. [Create the project](#2-create-the-project)
-3. [Link the repo](#3-link-the-repo)
-4. [Push the database](#4-push-the-database)
-5. [Generate secrets](#5-generate-secrets)
-6. [Vault secrets](#6-vault-secrets-for-cron-push-and-photo-cleanup)
-7. [Edge Function secrets and deploy](#7-edge-function-secrets-and-deploy)
-8. [Auth settings](#8-auth-settings-dashboard)
-9. [Load exchange rates](#9-load-exchange-rates)
-10. [Verify the deployment](#10-verify-the-deployment)
-11. [Connect the frontend](#11-connect-the-frontend)
-12. [Shipping changes later](#12-shipping-changes-later)
-13. [Local stack](#13-local-stack-full-supabase-on-your-machine)
-14. [Test suites at a glance](#14-test-suites-at-a-glance)
-15. [Troubleshooting](#15-troubleshooting)
+- [0. How the environments fit together](#0-how-the-environments-fit-together)
+- [A. Tools](#a-tools)
+- [B. Offline tests](#b-offline-tests-no-supabase-no-docker)
+- [C. Local stack](#c-local-stack-supabase-on-your-pc)
+- [D. Create and deploy an environment](#d-create-and-deploy-an-environment) (do it for staging first)
+- [E. Test staging](#e-test-staging)
+- [F. Production](#f-production-first-deploy)
+- [G. Connect the frontend](#g-connect-the-frontend-cloudflare-pages)
+- [H. Test suites at a glance](#h-test-suites-at-a-glance)
+- [I. Troubleshooting](#i-troubleshooting)
 
 ---
 
-## 1. Prerequisites
+## 0. How the environments fit together
+
+| Environment | What it is | Used by | Live test suite allowed |
+|---|---|---|---|
+| **Local** | Supabase in Docker on your PC (`npx supabase start`) | you, while developing | yes |
+| **Staging** | a separate cloud project: a disposable copy of production | you, and Cloudflare Pages *preview* deployments | yes (`LIVE_ALLOW_REMOTE=1`) |
+| **Production** | the cloud project real users use | the Pages *production* site | **never** |
+
+The rules:
+- Every change goes local → staging → production, with the same migrations, functions and commands.
+- Staging and production each have their **own** keys and secrets. Never reuse production secrets on staging.
+- Always say which project a command targets: pass `--project-ref <REF>` on deploy commands, and
+  check the linked project (`Get-Content supabase/.temp/project-ref`) before any command that uses it.
+
+### Values sheet
+
+Keep a private notes file **outside the repo** and fill it in as you go:
+
+```
+STAGING_REF=               PROD_REF=                  (20 letters from the project URL)
+STAGING_DB_PASSWORD=       PROD_DB_PASSWORD=
+STAGING_ANON_KEY=          PROD_ANON_KEY=             (Project Settings → API Keys → Legacy API keys)
+STAGING_SERVICE_ROLE_KEY=  PROD_SERVICE_ROLE_KEY=     (admin key: never in web/, git or chat)
+PAGES_PROJECT=             CUSTOM_DOMAIN=
+FX_API_KEY=                (Open Exchange Rates free plan works)
+```
+
+---
+
+## A. Tools
 
 | Need | For | How |
 |---|---|---|
-| Supabase account | everything | https://supabase.com/dashboard |
-| Node.js 20+ | bridge script, tests | https://nodejs.org |
-| Supabase CLI | deploy | Windows: `scoop bucket add supabase https://github.com/supabase/scoop-bucket.git` then `scoop install supabase`. macOS: `brew install supabase/tap/supabase`. Or skip installing and set `SUPABASE_BIN="npx supabase"` |
-| Docker Desktop | only the local stack and `test db` | https://www.docker.com/products/docker-desktop |
-| FX API key | daily exchange rates | Open Exchange Rates (free plan works) or ExchangeRate-API |
-| VAPID keys | Web Push | generated in step 5 |
-
-Check the CLI works through the bridge:
+| Node.js 20+ | `npx supabase`, the tests | https://nodejs.org |
+| Supabase CLI | everything | nothing to install: `npx supabase` runs it. Optional installs: Scoop on Windows, `brew install supabase/tap/supabase` on macOS |
+| Docker Desktop | only the local stack (C) and `test db` | https://www.docker.com/products/docker-desktop |
 
 ```bash
-node backend/scripts/supabase.mjs --version
+npx supabase --version
 ```
 
-## 2. Create the project
+**Docker on Windows:** keep Docker's disk on a drive with at least 15 GB free, and **not inside
+OneDrive**. Set it under Docker Desktop → Settings → Resources → Advanced → *Disk image location*
+(for example `F:\WSL\Docker`).
 
-1. Dashboard → **New project**. Region: **Southeast Asia (Singapore)** or **Northeast Asia (Tokyo)**.
-   Save the **database password**; the CLI asks for it.
-2. Note these from **Project Settings**:
-   - **Project ref**: the 20 lowercase letters in `https://<PROJECT_REF>.supabase.co`.
-   - **API keys**: the `anon` key and the `service_role` key, under the *Legacy API keys* tab.
-     This backend uses them, so keep legacy keys enabled. The service_role key never goes in `web/`.
-
-> Tip: make a second, free project for **staging**. The live end-to-end suite (step 10) should run
-> there, never on production.
-
-## 3. Link the repo
+## B. Offline tests (no Supabase, no Docker)
 
 ```bash
-node backend/scripts/supabase.mjs login
+cd supabase/node-tests
 ```
 ```bash
-node backend/scripts/supabase.mjs link --project-ref <PROJECT_REF>
-```
-
-The link is saved in `backend/.temp/`, which is git-ignored.
-
-## 4. Push the database
-
-Preview first, then apply the six migrations in `backend/migrations/`:
-
-```bash
-node backend/scripts/supabase.mjs db push --dry-run
+npm install
 ```
 ```bash
-node backend/scripts/supabase.mjs db push
+npm test
 ```
 
-This creates the tables, RLS policies, triggers, RPCs, the private `trip-photos` bucket, the
-Realtime publication and the pg_cron jobs. Check it in the Dashboard: **Table Editor** (13 tables
-in `public`), **Storage** (bucket `trip-photos`, private) and **Integrations → Cron** (3 jobs).
+Expect `pass 34`. This covers the migrations and a full trip flow on an embedded Postgres, the
+Edge Function helpers, and the pgTAP files. Run it after every change.
 
-If it stops at `pg_cron` or `pg_net`, enable them under **Database → Extensions** and run
-`db push` again. Migrations that already ran are skipped.
+## C. Local stack (Supabase on your PC)
 
-## 5. Generate secrets
+Needs Docker Desktop showing **Engine running**.
 
-Run each of these and keep the output for steps 6 and 7:
+```bash
+npx supabase start
+```
 
+The first run downloads several GB of images. When it finishes, the migrations and
+`supabase/seed.sql` (sample FX rates) are applied, and it prints the URLs.
+`npx supabase db reset` wipes the local database and re-applies everything whenever you want a
+fresh start.
+
+1. **Studio**: http://127.0.0.1:54323 (tables, storage, SQL editor). **Mailpit** (sign-in
+   codes): http://127.0.0.1:54324.
+2. **pgTAP inside the local database:**
+   ```bash
+   npx supabase test db
+   ```
+3. **Edge Functions.** Copy `supabase/functions/.env.example` to `supabase/functions/.env`, put
+   any random text in `CRON_SECRET` and `PUSH_WEBHOOK_SECRET`, then serve the functions in a
+   **second terminal** and leave it running:
+   ```bash
+   npx supabase functions serve
+   ```
+4. **Live tests.** Copy `supabase/node-tests/.env.live.example` to `.env.live` and set
+   `SUPABASE_URL=http://127.0.0.1:54321`. Set the two keys from the **`ANON_KEY`** and
+   **`SERVICE_ROLE_KEY`** lines (the long `eyJ…` values) printed by:
+   ```bash
+   npx supabase status -o env
+   ```
+   Then:
+   ```bash
+   cd supabase/node-tests && npm run test:live
+   ```
+5. **The app against local:** in `web/.env.local`, set `VITE_SUPABASE_URL=http://127.0.0.1:54321`
+   and `VITE_SUPABASE_ANON_KEY=<ANON_KEY>`, then run `npm run dev` in `web/`.
+6. **Stop** (`start` resumes in seconds):
+   ```bash
+   npx supabase stop
+   ```
+
+The local stack uses shared default keys and listens on your network. It's fine at home; stop it
+on public Wi-Fi.
+
+---
+
+## D. Create and deploy an environment
+
+Do this whole section **for staging first**, using `<REF>` = `STAGING_REF` and the file
+`.env.staging`. Part F repeats it for production with the differences listed there.
+
+### D0. One-time preparation
+```bash
+npx supabase login
+```
+```bash
+git status
+```
+Commit anything outstanding, so the deployed code is a known version. Then create one secrets
+file per environment (both are git-ignored):
+```bash
+cp supabase/functions/.env.example supabase/functions/.env.staging
+```
+```bash
+cp supabase/functions/.env.example supabase/functions/.env.production
+```
+
+### D1. Create the project
+In the Dashboard, click **New project**:
+- Name: `travel-bill-split-staging` (production: `travel-bill-split`).
+- Region: **Singapore** or **Tokyo**, the same for both projects.
+- Database password: generate and save it.
+
+When it's ready, record the ref and the `anon` / `service_role` keys in your values sheet.
+
+Free-plan projects pause after about a week without activity. Click **Restore** in the Dashboard
+if staging is paused.
+
+### D2. Link
+Set the database password for this terminal session so the CLI doesn't keep asking:
+
+| PowerShell | Bash |
+|---|---|
+| `$env:SUPABASE_DB_PASSWORD = "<password>"` | `export SUPABASE_DB_PASSWORD="<password>"` |
+
+```bash
+npx supabase link --project-ref <REF>
+```
+```bash
+Get-Content supabase/.temp/project-ref
+```
+(On macOS/Linux, `cat supabase/.temp/project-ref`.) It must print `<REF>`.
+
+### D3. Push the database
+Preview first; it should list the migrations in `supabase/migrations/`:
+```bash
+npx supabase db push --project-ref <REF> --dry-run
+```
+Then apply them:
+```bash
+npx supabase db push --project-ref <REF>
+```
+If it stops at `pg_cron` or `pg_net`: enable them under **Database → Extensions**, then push again.
+
+Check it in the Dashboard: **Table Editor** shows 13 tables, **Storage** shows `trip-photos` (private),
+and **Integrations → Cron** shows 3 jobs.
+
+### D4. Generate this environment's secrets
+Run this twice, saving one output as `CRON_SECRET` and the other as `PUSH_WEBHOOK_SECRET`:
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
-Run it twice: once for **CRON_SECRET**, once for **PUSH_WEBHOOK_SECRET**.
-
+Generate the Web Push keys (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`):
 ```bash
 npx web-push generate-vapid-keys
 ```
-This gives **VAPID_PUBLIC_KEY** and **VAPID_PRIVATE_KEY**. The public key also goes to the
-frontend (step 11).
+Fill in `supabase/functions/.env.staging` (or `.env.production`):
+```
+ALLOWED_ORIGINS=<see the table in F>
+FX_PROVIDER=openexchangerates
+FX_API_BASE=https://openexchangerates.org/api
+FX_API_KEY=<FX_API_KEY>
+CRON_SECRET=<first random string>
+PUSH_WEBHOOK_SECRET=<second random string>
+VAPID_PUBLIC_KEY=<public key>
+VAPID_PRIVATE_KEY=<private key>
+VAPID_SUBJECT=mailto:<your email>
+JOIN_RATE_LIMIT_MAX_FAILURES=10
+JOIN_RATE_LIMIT_MAX_FAILURES_PER_IP=30
+JOIN_RATE_LIMIT_WINDOW_MINUTES=15
+```
 
-## 6. Vault secrets (for cron, push and photo cleanup)
-
-The database calls Edge Functions itself: pg_cron calls `fetch_fx_rates`, the notifications
-trigger calls `send_push`, and `delete_trip` removes photos through the Storage API. It reads the
-URL and secrets from Vault. Open **SQL Editor** and run, with your values:
-
+### D5. Vault secrets
+The database calls the Edge Functions itself: the daily FX fetch, push on new notifications, and
+photo cleanup when a trip is deleted. It reads the URL and secrets for those calls from Vault. In
+this project's **SQL Editor**, run with this environment's values:
 ```sql
-select vault.create_secret('https://<PROJECT_REF>.supabase.co', 'project_url');
+select vault.create_secret('https://<REF>.supabase.co', 'project_url');
 select vault.create_secret('<CRON_SECRET>', 'cron_secret');
 select vault.create_secret('<PUSH_WEBHOOK_SECRET>', 'push_webhook_secret');
 select vault.create_secret('<service_role key>', 'service_role_key');
 ```
 
-To change one later, use `vault.update_secret` or **Database → Vault** in the Dashboard. A
-missing secret never breaks a write; that feature is just skipped, with a warning in the
-Postgres logs.
+To change one later, use `vault.update_secret` or **Database → Vault**. A missing secret never
+breaks a write; that feature is just skipped, with a warning in the Postgres logs.
 
-## 7. Edge Function secrets and deploy
-
-1. Copy `backend/functions/.env.example` to `backend/functions/.env` (git-ignored) and fill it in:
-   - `ALLOWED_ORIGINS`: your Pages URL, `https://*.<project>.pages.dev` for previews, any custom
-     domain, and `http://localhost:5173`.
-   - `FX_PROVIDER`, `FX_API_BASE`, `FX_API_KEY`.
-   - `CRON_SECRET` and `PUSH_WEBHOOK_SECRET`: the same values as in Vault.
-   - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT` (`mailto:you@yourdomain`).
-2. Upload the secrets:
-   ```bash
-   node backend/scripts/supabase.mjs secrets set --env-file backend/functions/.env
-   ```
-   ```bash
-   node backend/scripts/supabase.mjs secrets list
-   ```
-3. Deploy all four functions. `--use-api` bundles them on Supabase's side, so Docker isn't needed:
-   ```bash
-   node backend/scripts/supabase.mjs functions deploy --use-api
-   ```
-   `verify_jwt` comes from `backend/config.toml`: **on** for `join_trip` and `regenerate_invite`,
-   **off** for `fetch_fx_rates` and `send_push`, which check their own secrets. Confirm under
-   **Edge Functions** in the Dashboard.
-
-## 8. Auth settings (Dashboard)
-
-**Authentication → Sign In / Providers → Email**
-- Enable Email. Email OTP length **6**, expiry **600** seconds.
-
-**Authentication → Emails → Templates**
-- Paste `backend/templates/otp_code.html` into both **Magic Link** and **Confirm signup**. The
-  template contains only `{{ .Token }}`, so emails carry the 6-digit code and no sign-in link.
-
-**Authentication → Emails → SMTP Settings**
-- Set up custom SMTP (Resend, Postmark, SES, …). The built-in sender allows only a few emails per
-  hour and is not meant for real users.
-
-**Authentication → Sign In / Providers → Google and Apple**
-- Create the OAuth clients with the providers. The redirect/callback URL for both is
-  `https://<PROJECT_REF>.supabase.co/auth/v1/callback`. Paste the client IDs and secrets here.
-
-**Authentication → URL Configuration**
-- **Site URL**: your production frontend URL.
-- **Redirect URLs**: `http://localhost:5173/**`, `https://<project>.pages.dev/**`,
-  `https://*.<project>.pages.dev/**` and `https://<custom-domain>/**`.
-
-## 9. Load exchange rates
-
-Expenses in a foreign currency need at least one day of rates. Fetch today's instead of waiting
-for the 00:10 HKT cron run:
-
+### D6. Function secrets and deploy
 ```bash
-curl -X POST "https://<PROJECT_REF>.supabase.co/functions/v1/fetch_fx_rates" -H "x-cron-secret: <CRON_SECRET>"
+npx supabase secrets set --project-ref <REF> --env-file supabase/functions/.env.staging
+```
+```bash
+npx supabase secrets list --project-ref <REF>
+```
+Deploy the functions. `--use-api` bundles them on Supabase's side, so Docker isn't needed:
+```bash
+npx supabase functions deploy --use-api --project-ref <REF>
 ```
 
-Optionally backfill past days, one call per date, for pre-trip expenses:
+**Edge Functions** in the Dashboard should list `join_trip`, `regenerate_invite`, `fetch_fx_rates`
+and `send_push`. `verify_jwt` comes from `config.toml`: on for the first two, off for the last two,
+which check their own secrets.
 
+### D7. Auth settings (Dashboard)
+- **Authentication → Sign In / Providers → Email:** enabled, OTP length **6**, expiry **600** seconds.
+- **Authentication → Emails → Templates:** paste `supabase/templates/otp_code.html` into
+  **Magic Link** and **Confirm signup**, so emails carry the code and no link.
+- **SMTP, Google/Apple and URL Configuration:** see the table in F.
+
+### D8. Load exchange rates
 ```bash
-curl -X POST "https://<PROJECT_REF>.supabase.co/functions/v1/fetch_fx_rates" -H "x-cron-secret: <CRON_SECRET>" -H "Content-Type: application/json" -d "{\"date\":\"2026-09-01\"}"
+curl.exe -X POST "https://<REF>.supabase.co/functions/v1/fetch_fx_rates" -H "x-cron-secret: <CRON_SECRET>"
 ```
-
-Check in the SQL Editor:
+Then check in the SQL Editor:
 ```sql
-select rate_date, count(*) from public.fx_rates group by 1 order by 1 desc;
-```
-The response's `missing` list shows currencies your vendor doesn't cover.
-
-## 10. Verify the deployment
-
-**a) pgTAP inside the deployed database** (needs Docker running). Both files run in one
-transaction and roll back, so this is safe on production:
-
-```bash
-node backend/scripts/supabase.mjs test db --linked
+select rate_date, count(*) from fx_rates group by 1 order by 1 desc;
 ```
 
-- `01_platform.test.sql` (27 checks): RLS on every table, no `anon` access, the column-level
-  grants, RPC execute rights, triggers, the private bucket and its policies, the Realtime
-  publication, the pg_cron jobs and the currency seed.
-- `02_behaviour.test.sql` (40 checks): throwaway users and a trip exercising create/join,
-  invite secrecy, placeholders, AA/AB/personal expenses, conflicts, settlement replay, lock, soft
-  delete, append-only log, storage visibility, invite rotation and delete.
+Optionally backfill past dates for pre-trip expenses, one call per date: add
+`-H "Content-Type: application/json" -d "{\"date\":\"2026-09-01\"}"`. The response's `missing`
+list shows currencies your vendor doesn't cover.
 
-**b) Live end-to-end over HTTP, on staging only.** It goes through the real gateway, Edge
-Functions, Realtime and Storage, and covers the acceptance items the database can't check alone:
-Realtime delivery to a second member, photos unreachable without a signed URL, and no invite code
-in a member's `GET /trips`.
+---
 
-```bash
-cd backend/node-tests && npm install
-```
-Copy `backend/node-tests/.env.live.example` to `.env.live`. Set `SUPABASE_URL`, the anon and
-service_role keys **of the staging project**, and `LIVE_ALLOW_REMOTE=1`. Optionally set
-`PUSH_WEBHOOK_SECRET`, `CRON_SECRET` + `LIVE_RUN_FX=1` and `LIVE_ALLOWED_ORIGIN`. Then:
+## E. Test staging
 
-```bash
-npm run test:live
-```
-
-It creates users named `e2e-<run>-alice@example.com` and so on (no email is sent) plus one
-trip, and deletes them at the end. If a run is interrupted, delete leftover `e2e-` users under
-**Authentication → Users**.
-
-**c) A quick smoke test on production.** This must return `401` (no user token):
-
-```bash
-curl -i -X POST "https://<PROJECT_REF>.supabase.co/functions/v1/join_trip" -H "apikey: <anon key>" -H "Content-Type: application/json" -d "{\"code\":\"K7P2QX\"}"
-```
-
-## 11. Connect the frontend
-
-- Local: `web/.env.local` gets `VITE_SUPABASE_URL=https://<PROJECT_REF>.supabase.co`,
-  `VITE_SUPABASE_ANON_KEY=<anon key>` and `VITE_VAPID_PUBLIC_KEY=<VAPID public key>`.
-- Cloudflare Pages: add the same three variables under **Settings → Environment variables** for
-  Production and Preview, then redeploy.
-- The Pages domain must be listed in `ALLOWED_ORIGINS` (step 7) and in Auth Redirect URLs
-  (step 8).
-
-## 12. Shipping changes later
-
-1. Create a migration. Never edit one that has already been pushed:
+1. **pgTAP in the staging database** (Docker running; staging must be the linked project, D2):
    ```bash
-   node backend/scripts/supabase.mjs migration new <short_name>
+   npx supabase test db --linked
    ```
-   This creates `backend/migrations/<timestamp>_<short_name>.sql`.
-2. Test offline (no Docker, a few seconds):
-   ```bash
-   cd backend/node-tests && npm test
+   27 + 40 checks, all rolled back.
+2. **Live end-to-end suite.** In `supabase/node-tests/.env.live`:
    ```
-3. Optionally test on the local stack (section 13): `db reset`, then `test db`, then `npm run test:live`.
-4. Ship it:
-   ```bash
-   node backend/scripts/supabase.mjs db push
+   SUPABASE_URL=https://<STAGING_REF>.supabase.co
+   SUPABASE_ANON_KEY=<STAGING_ANON_KEY>
+   SUPABASE_SERVICE_ROLE_KEY=<STAGING_SERVICE_ROLE_KEY>
+   LIVE_ALLOW_REMOTE=1
+   PUSH_WEBHOOK_SECRET=<staging value>
+   CRON_SECRET=<staging value>
+   LIVE_ALLOWED_ORIGIN=http://localhost:5173
    ```
    ```bash
-   node backend/scripts/supabase.mjs functions deploy --use-api
+   cd supabase/node-tests && npm run test:live
    ```
-   Run `db push` before `functions deploy` when a function depends on a new RPC.
-5. Verify with `node backend/scripts/supabase.mjs test db --linked`.
+   Keep it to about 2 runs per 15 minutes: each run makes roughly 12 failed join attempts on
+   purpose, and the per-IP limit is 30. Delete leftover `e2e-…` users under Authentication → Users
+   if a run is interrupted.
+3. **Click through the app.** Point `web/.env.local` at staging, then check: sign-in by code,
+   creating a trip, joining from a second browser profile, live updates, and a foreign-currency
+   expense.
 
-Changed a secret? Run `secrets set` again. Running functions pick it up on their next cold start;
-redeploy if you need it immediately.
+**Only move on to production when all three pass.**
 
-## 13. Local stack (full Supabase on your machine)
+---
 
-Needs Docker Desktop running.
+## F. Production (first deploy)
 
-```bash
-node backend/scripts/supabase.mjs start
-```
-```bash
-node backend/scripts/supabase.mjs db reset
-```
-`db reset` applies the migrations plus `backend/seed.sql` (sample FX rates for today).
+Repeat **D1 to D8** with `<REF>` = `PROD_REF` and `supabase/functions/.env.production`, and apply
+these differences:
 
-Serve the functions in a second terminal. They read `backend/functions/.env`:
-```bash
-node backend/scripts/supabase.mjs functions serve
-```
+| Setting | Staging | Production |
+|---|---|---|
+| Secrets (D4) | its own | **new** ones: never copy staging's |
+| `ALLOWED_ORIGINS` | `http://localhost:5173,https://*.<PAGES_PROJECT>.pages.dev` | `https://<PAGES_PROJECT>.pages.dev,https://<CUSTOM_DOMAIN>` |
+| Auth → Site URL | `http://localhost:5173` | `https://<CUSTOM_DOMAIN>` (or the pages.dev URL) |
+| Auth → Redirect URLs | `http://localhost:5173/**`, `https://*.<PAGES_PROJECT>.pages.dev/**` | `https://<PAGES_PROJECT>.pages.dev/**`, `https://<CUSTOM_DOMAIN>/**` |
+| SMTP (Authentication → Emails → SMTP Settings) | built-in is OK | **custom SMTP required** (Resend, Postmark, …). The built-in sender allows only a few emails per hour |
+| Google / Apple | optional | configure both; callback `https://<PROD_REF>.supabase.co/auth/v1/callback` |
+| Vault `project_url` | `https://<STAGING_REF>.supabase.co` | `https://<PROD_REF>.supabase.co` |
 
-Then:
-```bash
-node backend/scripts/supabase.mjs test db
-```
-```bash
-node backend/scripts/supabase.mjs status -o env
-```
-Copy `API_URL`, `ANON_KEY` and `SERVICE_ROLE_KEY` into `backend/node-tests/.env.live`
-(`LIVE_ALLOW_REMOTE` isn't needed for localhost), then:
-```bash
-cd backend/node-tests && npm run test:live
-```
+Then verify production:
 
-Local extras: Studio at http://localhost:54323 and the email inbox at http://localhost:54324.
-For push and cron to reach the local functions from inside Postgres, set the Vault secret
-`project_url` to `http://host.docker.internal:54321`.
+1. pgTAP. Safe, because everything rolls back; production must be the linked project:
+   ```bash
+   npx supabase test db --linked
+   ```
+2. Smoke test. This must return **401**, since there's no user token:
+   ```bash
+   curl.exe -i -X POST "https://<PROD_REF>.supabase.co/functions/v1/join_trip" -H "apikey: <PROD_ANON_KEY>" -H "Content-Type: application/json" -d "{\"code\":\"K7P2QX\"}"
+   ```
+3. **Do not** run `npm run test:live` against production.
+4. Tag this first release: see [RELEASE.md](RELEASE.md#2-versioning).
+5. Afterwards, link back to staging for day-to-day work, and clear the password
+   (`Remove-Item Env:SUPABASE_DB_PASSWORD`).
 
-## 14. Test suites at a glance
+---
+
+## G. Connect the frontend (Cloudflare Pages)
+
+Set these in the Pages project, under **Settings → Variables and Secrets** (older layouts:
+*Environment variables*):
+
+| Variable | Production | Preview |
+|---|---|---|
+| `VITE_SUPABASE_URL` | `https://<PROD_REF>.supabase.co` | `https://<STAGING_REF>.supabase.co` |
+| `VITE_SUPABASE_ANON_KEY` | `<PROD_ANON_KEY>` | `<STAGING_ANON_KEY>` |
+| `VITE_VAPID_PUBLIC_KEY` | production VAPID public key | staging VAPID public key |
+
+Redeploy after changing them. Every preview deployment (a branch or pull request) then talks to
+staging, and only the production site talks to production. Your own `web/.env.local` should
+normally point at staging or local.
+
+---
+
+## H. Test suites at a glance
 
 | Suite | Where | Runs against | Command | Needs |
 |---|---|---|---|---|
-| Offline acceptance + unit + pgTAP-on-PGlite | `backend/node-tests/offline/` | embedded Postgres (PGlite) with Supabase stubs | `cd backend/node-tests && npm test` | Node only |
-| pgTAP | `backend/tests/*.test.sql` | the real database: local or linked | `node backend/scripts/supabase.mjs test db [--linked]` | Docker |
-| Live end-to-end | `backend/node-tests/live/` | the real HTTP API: local or **staging** | `cd backend/node-tests && npm run test:live` | a running stack |
+| Offline | `supabase/node-tests/offline/` | embedded Postgres (PGlite) with Supabase stubs | `cd supabase/node-tests && npm test` | Node |
+| pgTAP | `supabase/tests/*.test.sql` | a real database: local, or the linked project | `npx supabase test db [--linked]` | Docker |
+| Live | `supabase/node-tests/live/` | the real HTTP API: local or **staging** | `cd supabase/node-tests && npm run test:live` | a running stack |
 
-## 15. Troubleshooting
+---
+
+## I. Troubleshooting
 
 | Symptom | Cause / fix |
 |---|---|
-| `db push`: permission denied for extension `pg_cron` / `pg_net` | Enable it under **Database → Extensions**, then push again |
-| Browser: CORS error calling `join_trip` | Add the exact origin to `ALLOWED_ORIGINS`, run `secrets set` again, and redeploy the function |
-| `join_trip` returns 401 from the app | The request lacks a user access token. The user must be signed in (supabase-js adds it) |
-| Saving a JPY/KRW/… expense returns `fx_rate_missing` | No rates stored yet. Run step 9, then check the cron history: `select * from cron.job_run_details order by start_time desc limit 5;` and `select * from net._http_response order by created desc limit 5;` |
-| Push notifications never arrive | Check the Vault `project_url` / `push_webhook_secret`, the VAPID secrets, **Edge Functions → send_push → Logs**, and `net._http_response` |
+| `scoop` is not recognized | Scoop isn't installed. You don't need it: use `npx supabase …` |
+| `open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified` | Docker Desktop isn't running. Start it and wait for **Engine running** (`docker info` should work) |
+| `input/output error` / `read-only file system` while pulling images | Docker's disk is full or damaged. In Docker Desktop: Troubleshoot → Clean / Purge data. Then move the disk image to a drive with space, outside OneDrive (Settings → Resources → Advanced) |
+| `supabase start`: `error running container: exit 139` | A container crashed. Run `npx supabase stop --no-backup`, then retry. If it repeats, start without Realtime: `npx supabase start -x realtime` |
+| `db push`: permission denied for extension `pg_cron` / `pg_net` | Enable them under **Database → Extensions**, then push again |
+| A command acted on the wrong project | Always pass `--project-ref`. Check `supabase/.temp/project-ref` before `test db --linked` |
+| Browser: CORS error calling `join_trip` | Add the exact origin to `ALLOWED_ORIGINS`, then `secrets set` and `functions deploy` |
+| `join_trip` returns 401 from the app | The request lacks a user access token; the user must be signed in |
+| Saving a foreign-currency expense returns `fx_rate_missing` | No rates stored yet. Run D8, then check cron history: `select * from cron.job_run_details order by start_time desc limit 5;` and `select * from net._http_response order by created desc limit 5;` |
+| Push notifications never arrive | Check the Vault `project_url` / `push_webhook_secret`, the VAPID secrets, and **Edge Functions → send_push → Logs** |
 | Photos remain after a trip is deleted | The Vault secret `service_role_key` is missing |
-| OTP emails don't arrive | The built-in SMTP rate limit. Set up custom SMTP (step 8) |
-| Live suite: joins start returning 429 | The per-IP join limit (30 failed attempts in 15 minutes); each live run makes about 12. Wait 15 minutes, or raise `JOIN_RATE_LIMIT_MAX_FAILURES_PER_IP` on staging |
-| `test db`: cannot connect to Docker | Start Docker Desktop. `test db` runs `pg_prove` in a container |
-| `functions deploy` wants Docker | Add `--use-api` |
+| OTP emails don't arrive | The built-in SMTP rate limit: set up custom SMTP |
+| Live suite: joins start returning 429 | The per-IP join limit. Wait 15 minutes |
+| Live suite refuses to run | Set `LIVE_ALLOW_REMOTE=1` for a staging URL, never for production |
+| `test db`: cannot connect to Docker | Start Docker Desktop; `test db` runs `pg_prove` in a container |

@@ -1,4 +1,4 @@
-# Supabase CLI state, written here through scripts/supabase.mjs
+# Supabase CLI state (linked project ref, branches)
 .temp/
 .branches/
 

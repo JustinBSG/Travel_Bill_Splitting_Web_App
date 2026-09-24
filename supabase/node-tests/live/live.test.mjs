@@ -8,7 +8,7 @@
 //   * invite_code is absent from a member's GET /trips
 //   * join / claim / regenerate through the Edge Functions
 // It creates throwaway users (e2e-<run>-*@example.com) and one trip, and
-// deletes them at the end. Run: npm run test:live (see backend/DEPLOY.md).
+// deletes them at the end. Run: npm run test:live (see supabase/DEPLOY.md).
 import assert from 'node:assert/strict'
 import { after, before, describe, it } from 'node:test'
 import { admin, anonClient, callFunction, cfg, hkDate, newUser, runId, skipReason } from './support.mjs'

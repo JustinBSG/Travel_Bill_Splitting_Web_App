@@ -1,11 +1,8 @@
 # Supabase project config for Travel Bill Split (backend-as-code).
 # Reference: https://supabase.com/docs/guides/local-development/cli/config
 #
-# The Supabase CLI only reads <workdir>/supabase/config.toml, and this repo
-# must not contain a folder named supabase/. Run the CLI through the bridge,
-# which links a temp workdir's supabase/ to this folder (template paths below
-# are relative to that workdir, hence ./supabase/templates/...):
-#     node backend/scripts/supabase.mjs <command>      (see backend/README.md)
+# Run the CLI from the repo root (`npx supabase <command>`, see
+# supabase/DEPLOY.md). Template paths below are relative to the repo root.
 #
 # This file drives LOCAL development (`supabase start`) and function settings
 # on deploy. Production Auth (site URL, redirect allowlist, Google / Apple,
