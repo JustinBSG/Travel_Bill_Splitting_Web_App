@@ -60,8 +60,13 @@ src/
 - **Trip spending / category / day / currency stats** exclude loans and personal expenses and use each
   expense's locked `amount_hkd`. **Per-person paid/share** include loans (they explain the balance).
   **Personal spending** = your shares of group spending + your personal expenses.
-- **Shares on screen** always come from `expense_participants.share_amount`. The form shows a preview
-  (remainder to lowest `trip_members.id` first) that is discarded after save.
+- **Two split methods** (`expenses.split_method`):
+  - **AA — split equally** (`equal`, default): the server splits the amount between the To members.
+    The form shows a preview (remainder to lowest `trip_members.id` first) that is discarded after save.
+  - **AB — exact amounts** (`exact`): each person's share is what they actually had, payer included.
+    E.g. D pays HK$ 120, D had 80, E had 40 → E owes D HK$ 40. The form only saves when the amounts add
+    up exactly to the total ("+ Rest" gives the unassigned amount to one person).
+  - Either way, **shares on screen** always come from `expense_participants.share_amount`.
 - **All in HKD**: each member's per-currency net is converted at the latest rate, rounded with the
   largest-remainder method (so rounding never creates money), then greedy-matched. It never sums `amount_hkd`.
   Transfers under HK$ 0.10 caused only by FX rounding are hidden, with a visible note.
@@ -86,8 +91,14 @@ assumptions. Each one is isolated in a single file so it's easy to adjust.
    **without joining**. The real join is `join_trip({ token | code, claim_placeholder_id? })` → `{ trip_id }`.
    HTTP 404 = invalid code, 403 = joining disabled, 429 = rate limited.
 2. **Saving an expense isn't atomic** (`features/expenses/expenseApi.ts`): the UI inserts/updates `expenses`,
-   then inserts/deletes `expense_participants` rows (`expense_id, member_id`, no `share_amount`), expecting a
-   trigger to compute shares. A `save_expense` RPC would make this one transaction.
+   then writes `expense_participants`. A `save_expense` RPC would make this one transaction.
+   - AA (`split_method = 'equal'`): rows are inserted as `expense_id, member_id` (no `share_amount`);
+     a trigger computes shares, and must recompute when the amount or split method changes.
+   - AB (`split_method = 'exact'`): rows are upserted with `share_amount` (`on_conflict = expense_id,member_id`).
+     The backend must keep these values (not re-split) and should check they add up to `amount`.
+     The Conclusion page also flags any expense whose shares don't add up.
+   - **Scope note:** uneven/itemized splits are listed as "not in v1" in the spec (§11). AB was added at the
+     product owner's request, so the backend needs the new `split_method` column (text, default `'equal'`).
 3. `created_by` columns are not sent; expected `DEFAULT auth.uid()`.
 4. **Trip creation** (`features/trips/tripApi.ts`): the client generates the trip id, inserts `trips` without
    RETURNING, then inserts the creator's `owner` membership only if a trigger hasn't already created it.
@@ -98,7 +109,8 @@ assumptions. Each one is isolated in a single file so it's easy to adjust.
    through the table, e.g. base USD). `expenses.fx_rate_to_hkd` = HKD per 1 major unit.
    `settlements.fx_rate` = paid_currency per 1 major unit of debt_currency (1 when the same).
 7. Money is sent as integer strings (e.g. `"15780"`), never floats. `local_date` is sent too (the trigger may overwrite it).
-8. Unique constraints the UI relies on: `trip_days (trip_id, date)`, `notification_settings (user_id, type)`,
+8. Unique constraints the UI relies on: `trip_days (trip_id, date)`, `expense_participants (expense_id, member_id)`,
+   `notification_settings (user_id, type)`,
    `settlements.idempotency_key`, `push_subscriptions.endpoint` (duplicates are ignored).
 9. **Notifications**: type strings `expense_added`, `expense_changed` (+ `expense_updated`/`expense_deleted`
    accepted), `settlement_received`, `member_joined`, `placeholder_claimed`, `trip_locked`; payload fields

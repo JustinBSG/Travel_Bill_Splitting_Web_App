@@ -85,9 +85,15 @@ export function ExpenseRow({ expense: e, page, pageCurrency, pinnedOn }: Props) 
             {!personal && (
               <>
                 {' · '}
-                {everyone
-                  ? t('expense.splitEveryone')
-                  : t('expense.splitBetween', { names: participantIds.map(memberName).join(', ') })}
+                {e.split_method === 'exact'
+                  ? t('expense.splitExact', {
+                      list: e.expense_participants
+                        .map((p) => `${memberName(p.member_id)} ${fmt.money(p.share_amount, e.currency)}`)
+                        .join(', '),
+                    })
+                  : everyone
+                    ? t('expense.splitEveryone')
+                    : t('expense.splitBetween', { names: participantIds.map(memberName).join(', ') })}
               </>
             )}
           </span>

@@ -437,6 +437,35 @@ textarea {
   flex: 1;
 }
 
+.exact-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.exact-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 7.5rem auto;
+  align-items: center;
+  gap: 4px 8px;
+}
+.exact-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.exact-input {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.exact-rest {
+  white-space: nowrap;
+}
+.exact-error {
+  grid-column: 1 / -1;
+}
+
 .category-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));

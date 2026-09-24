@@ -25,6 +25,13 @@ export const CATEGORIES = [
 ] as const
 export type Category = (typeof CATEGORIES)[number]
 
+/**
+ * 'equal' (AA): server splits the amount equally between the To members.
+ * 'exact' (AB): each member's share is the amount they actually had, typed in
+ * the form (payer's own part included); shares must add up to the amount.
+ */
+export type SplitMethod = 'equal' | 'exact'
+
 export interface Profile {
   id: Id
   display_name: string | null
@@ -99,6 +106,8 @@ export interface Expense {
   fx_rate_date: ISODate | null
   amount_hkd: MinorRaw | null
   currency_manually_set: boolean
+  /** Missing/null is treated as 'equal'. */
+  split_method?: SplitMethod | null
   created_by: Id | null
   created_at: string
   updated_at: string

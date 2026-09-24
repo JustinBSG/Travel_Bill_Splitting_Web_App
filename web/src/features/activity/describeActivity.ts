@@ -66,6 +66,9 @@ function expenseLine(row: ActivityLogRow, ctx: Ctx, actor: string): ActivityLine
   }
   if (changed(b, a, 'category')) parts.push(`${s(b.category)} → ${s(a.category)}`)
   if (changed(b, a, 'end_date')) parts.push(t('activity.multiDayChanged'))
+  if (changed(b, a, 'split_method')) {
+    parts.push(a.split_method === 'exact' ? t('activity.splitToExact') : t('activity.splitToEqual'))
+  }
   return {
     text: parts.length
       ? t('activity.expenseEdited', { actor, title, changes: parts.join(', ') })

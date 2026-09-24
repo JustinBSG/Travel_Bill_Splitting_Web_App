@@ -22,7 +22,7 @@ export const MEMBER_COLUMNS = 'id, trip_id, user_id, display_name, role, joined_
 export const EXPENSE_COLUMNS =
   'id, trip_id, title, category, amount, currency, paid_by, occurred_at, timezone, local_date, end_date, ' +
   'location_text, latitude, longitude, photo_path, note, fx_rate_to_hkd, fx_rate_date, amount_hkd, ' +
-  'currency_manually_set, created_by, created_at, updated_at, deleted_at, ' +
+  'currency_manually_set, split_method, created_by, created_at, updated_at, deleted_at, ' +
   'expense_participants(member_id, share_amount)'
 export const SETTLEMENT_COLUMNS =
   'id, trip_id, from_member, to_member, debt_currency, debt_amount, paid_currency, paid_amount, fx_rate, paid_at, created_by, idempotency_key'

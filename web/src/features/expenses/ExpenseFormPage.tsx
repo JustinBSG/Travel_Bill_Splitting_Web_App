@@ -25,7 +25,7 @@ import {
   toMinor,
   toRate,
 } from '../../lib/money'
-import { CATEGORIES, type Category, type Expense } from '../../lib/types'
+import { CATEGORIES, type Category, type Expense, type SplitMethod } from '../../lib/types'
 import { useTripData } from '../trips/TripDataContext'
 import { usePageLabels } from '../trips/usePageLabels'
 import { CATEGORY_META, categoryLabel } from './categories'
@@ -37,7 +37,9 @@ import {
   updateExpense,
   uploadPhoto,
   type ExpenseInput,
+  type ParticipantInput,
 } from './expenseApi'
+import { evaluateExactSplit, isExactSplitComplete } from './exactSplit'
 import { preparePhoto } from './photo'
 
 function isPageKey(s: string | null): s is ExpensePageKey {
@@ -110,6 +112,16 @@ function ExpenseForm({ existing, originPage, onReloadLatest }: FormProps) {
         currencyManual: existing.currency_manually_set,
         paidBy: existing.paid_by,
         participants: existing.expense_participants.map((p) => p.member_id),
+        splitMethod: (existing.split_method === 'exact' ? 'exact' : 'equal') as SplitMethod,
+        exactTexts:
+          existing.split_method === 'exact'
+            ? Object.fromEntries(
+                existing.expense_participants.map((p) => [
+                  p.member_id,
+                  minorToMajorString(toMinor(p.share_amount), existing.currency),
+                ]),
+              )
+            : ({} as Record<string, string>),
         date: existing.local_date,
         time: local.time,
         category: existing.category,
@@ -129,6 +141,8 @@ function ExpenseForm({ existing, originPage, onReloadLatest }: FormProps) {
       currencyManual: false,
       paidBy: me?.id ?? activeMembers[0]?.id ?? '',
       participants: activeMembers.map((m) => m.id),
+      splitMethod: 'equal' as SplitMethod,
+      exactTexts: {} as Record<string, string>,
       date,
       time: timeNowIn(tzForDate(date)),
       category: 'Food & Drink' as Category,
@@ -147,6 +161,8 @@ function ExpenseForm({ existing, originPage, onReloadLatest }: FormProps) {
   const [currencyManual, setCurrencyManual] = useState(init.currencyManual)
   const [paidBy, setPaidBy] = useState(init.paidBy)
   const [participants, setParticipants] = useState<string[]>(init.participants)
+  const [splitMethod, setSplitMethod] = useState<SplitMethod>(init.splitMethod)
+  const [exactTexts, setExactTexts] = useState<Record<string, string>>(init.exactTexts)
   const [date, setDate] = useState(init.date)
   const [time, setTime] = useState(init.time)
   const [category, setCategory] = useState<Category>(init.category)
@@ -198,18 +214,52 @@ function ExpenseForm({ existing, originPage, onReloadLatest }: FormProps) {
 
   const toOptions = useMemo(() => {
     const list = activeMembers.slice()
-    for (const id of participants) {
+    const ids = new Set([...participants, ...Object.keys(exactTexts).filter((k) => exactTexts[k].trim())])
+    for (const id of ids) {
       const m = memberById.get(id)
       if (m && m.removed_at && !list.includes(m)) list.push(m)
     }
     return list
-  }, [activeMembers, memberById, participants])
+  }, [activeMembers, memberById, participants, exactTexts])
 
   // Preview only (discarded after save); server rows are the truth.
   const preview = parsed.ok && participants.length > 0 ? splitEqualPreview(parsed.minor, participants) : null
   const previewValues = preview ? [...preview.values()] : []
   const previewMin = previewValues.length ? Dec.min(...previewValues) : null
   const previewMax = previewValues.length ? Dec.max(...previewValues) : null
+
+  // AB: each person's typed amount; must add up to the total.
+  const exact = evaluateExactSplit(
+    parsed.ok ? parsed.minor : null,
+    exactTexts,
+    toOptions.map((m) => m.id),
+    currency,
+  )
+
+  function changeSplitMethod(next: SplitMethod) {
+    if (next === splitMethod) return
+    if (next === 'exact') {
+      // Start from the equal split of the current To list so the user only adjusts.
+      const hasTexts = Object.values(exactTexts).some((v) => v.trim())
+      if (!hasTexts && preview) {
+        setExactTexts(Object.fromEntries([...preview].map(([id, v]) => [id, minorToMajorString(v, currency)])))
+      }
+    } else if (exact.shares.size) {
+      setParticipants([...exact.shares.keys()])
+    }
+    setSplitMethod(next)
+  }
+
+  function setExactText(id: string, text: string) {
+    setExactTexts((xs) => ({ ...xs, [id]: text }))
+  }
+
+  /** "+ Rest": give whatever is still unassigned to this person. */
+  function addRemainingTo(id: string) {
+    if (!exact.remaining || !exact.remaining.isPositive() || exact.remaining.isZero()) return
+    const current = exact.shares.get(id) ?? new Dec(0)
+    setExactText(id, minorToMajorString(current.plus(exact.remaining), currency))
+  }
 
   const allCurrencies = useMemo(() => [...new Set([currency, ...knownCurrencies()])], [currency])
 
@@ -255,6 +305,7 @@ function ExpenseForm({ existing, originPage, onReloadLatest }: FormProps) {
     time: !/^\d{2}:\d{2}$/.test(time),
     paidBy: !paidBy,
     endDate: multiDay && (!isISODate(endDate) || endDate <= date),
+    split: splitMethod === 'exact' && !isExactSplitComplete(exact),
   }
   const hasErrors = Object.values(errors).some(Boolean)
 
@@ -283,10 +334,15 @@ function ExpenseForm({ existing, originPage, onReloadLatest }: FormProps) {
         photo_path: finalPhoto,
         note: note.trim() || null,
         currency_manually_set: currencyManual,
+        split_method: splitMethod,
       }
+      const people: ParticipantInput[] =
+        splitMethod === 'exact'
+          ? [...exact.shares].map(([member_id, share_amount]) => ({ member_id, share_amount }))
+          : participants.map((member_id) => ({ member_id }))
       let saved: Expense
       if (existing) {
-        const res = await updateExpense(existing, input, participants)
+        const res = await updateExpense(existing, input, people)
         if (!res.ok) {
           setConflict(true)
           setSaving(false)
@@ -294,7 +350,7 @@ function ExpenseForm({ existing, originPage, onReloadLatest }: FormProps) {
         }
         saved = res.expense
       } else {
-        saved = await createExpense(trip.id, input, participants)
+        saved = await createExpense(trip.id, input, people)
       }
       await reload(['expenses'])
       // Auto-move: the saved local_date decides the page.
@@ -457,6 +513,83 @@ function ExpenseForm({ existing, originPage, onReloadLatest }: FormProps) {
             </label>
 
             <fieldset className="field">
+              <legend>{t('form.splitMethod')}</legend>
+              <div className="segmented" role="group" aria-label={t('form.splitMethod')}>
+                <button
+                  type="button"
+                  className={splitMethod === 'equal' ? 'active' : ''}
+                  aria-pressed={splitMethod === 'equal'}
+                  onClick={() => changeSplitMethod('equal')}
+                >
+                  {t('form.splitEqual')}
+                </button>
+                <button
+                  type="button"
+                  className={splitMethod === 'exact' ? 'active' : ''}
+                  aria-pressed={splitMethod === 'exact'}
+                  onClick={() => changeSplitMethod('exact')}
+                >
+                  {t('form.splitExact')}
+                </button>
+              </div>
+            </fieldset>
+
+            {splitMethod === 'exact' ? (
+              <fieldset className="field">
+                <legend>{t('form.exactTitle')}</legend>
+                <p className="muted small">{t('form.exactHint')}</p>
+                <ul className="exact-list">
+                  {toOptions.map((m) => {
+                    const bad = exact.invalid.includes(m.id)
+                    const canAddRest = !!exact.remaining && exact.remaining.isPositive() && !exact.remaining.isZero()
+                    return (
+                      <li key={m.id} className="exact-row">
+                        <label htmlFor={`exact-${m.id}`} className="exact-name">
+                          {m.display_name}
+                          {m.id === me?.id ? ` (${t('app.you')})` : ''}
+                          {m.id === paidBy && <span className="badge">{t('form.payer')}</span>}
+                          {!m.user_id && <span className="badge badge-muted">{t('members.placeholder')}</span>}
+                          {m.removed_at && <span className="badge badge-muted">{t('members.left')}</span>}
+                        </label>
+                        <input
+                          id={`exact-${m.id}`}
+                          className="exact-input"
+                          inputMode={decimals > 0 ? 'decimal' : 'numeric'}
+                          placeholder="—"
+                          value={exactTexts[m.id] ?? ''}
+                          onChange={(e) => setExactText(m.id, e.target.value)}
+                          aria-invalid={bad}
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-small exact-rest"
+                          disabled={!canAddRest}
+                          onClick={() => addRemainingTo(m.id)}
+                          aria-label={t('form.addRestFor', { name: m.display_name })}
+                        >
+                          {t('form.addRest')}
+                        </button>
+                        {bad && <span className="error-text small exact-error">{t('form.exactInvalid')}</span>}
+                      </li>
+                    )
+                  })}
+                </ul>
+                {exact.remaining === null ? (
+                  <p className="muted small">{t('form.exactNeedTotal')}</p>
+                ) : exact.remaining.isZero() && exact.shares.size > 0 ? (
+                  <p className="pos small">✓ {t('form.exactOk', { amount: fmt.money(exact.assigned, currency) })}</p>
+                ) : exact.remaining.isPositive() ? (
+                  <p className="banner banner-warn small">
+                    {t('form.exactLeft', { amount: fmt.money(exact.remaining, currency) })}
+                  </p>
+                ) : (
+                  <p className="banner banner-error small">
+                    {t('form.exactOver', { amount: fmt.money(exact.remaining.abs(), currency) })}
+                  </p>
+                )}
+              </fieldset>
+            ) : (
+            <fieldset className="field">
               <legend>{t('form.to')}</legend>
               <div className="row-gap">
                 <button type="button" className="btn btn-small" onClick={() => setParticipants(activeMembers.map((m) => m.id))}>
@@ -502,6 +635,7 @@ function ExpenseForm({ existing, originPage, onReloadLatest }: FormProps) {
                 )
               )}
             </fieldset>
+            )}
 
             <fieldset className="field">
               <legend>{t('form.category')}</legend>
