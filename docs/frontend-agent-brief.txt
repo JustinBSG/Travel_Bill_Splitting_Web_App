@@ -1,9 +1,13 @@
 ==============================================================================
  TRAVEL BILL SPLIT — FRONTEND AGENT BRIEF
  For another AI / engineer implementing the React PWA only
- Version: 1.0
+ Version: 1.1
  Date: 2026-09-24
- Source of truth: travel-bill-split-app-spec.txt (v1 + section 12 freeze)
+ Source of truth: travel-bill-split-app-spec.txt (v1.1 + section 12 freeze)
+ Change log:
+   1.1  Added AB split (exact amounts per person) next to AA equal split.
+        See 3.6, 3.7, 4, 5, 9.
+   1.0  First version.
 ==============================================================================
 
 HOW TO USE THIS FILE
@@ -50,7 +54,8 @@ WHAT THIS PRODUCT IS NOT (do not build)
   Native iOS/Android (no Expo, no React Native, no Xcode, no Play Console)
   Offline-first queue
   Receipt OCR
-  Itemized / weighted / multi-payer splits
+  Itemized-receipt / weighted / multi-payer splits
+  (exact amount per person IS in scope: the AB split, see 3.7)
   Trip budget bar
   PDF export (CSV only)
   PayMe / FPS payment rail
@@ -187,7 +192,8 @@ Locked trip (is_locked = true)
     title, category icon, time "23:10 (Tokyo time)"
     original amount + HKD  e.g. "3,000 JPY  (HK$ 157.80)"
     if original currency != that date's local currency, also show local
-    paid by, split between
+    paid by, split between (AB: list each amount,
+      e.g. "by amount: D HK$ 80.00, E HK$ 40.00")
     "what it means for me"  e.g. "You owe Alex HK$ 52.60"
 
   Page assignment (use stored local_date, NEVER the phone's calendar)
@@ -202,8 +208,20 @@ Locked trip (is_locked = true)
     "This expense was moved to 14 Oct (Osaka) because of its date."
 
 3.7 Expense form
-  Required: title, amount, currency, paid_by (default me), To (default
-  all current members with removed_at null), date+time, category
+  Required: title, amount, currency, paid_by (default me), split method,
+  To (default all current members with removed_at null), date+time,
+  category
+
+  Split method (toggle, default AA)
+    AA  "Split equally": pick the To members; server computes shares.
+    AB  "Exact amounts": one amount input per member, payer included;
+        blank = not involved. Show "X still to assign" / "X more than the
+        total" / "Adds up to X". Offer "+ Rest" to give the unassigned
+        amount to one person. Save is disabled until the amounts sum
+        EXACTLY to the total (integer minor units, currency decimals).
+        Switching AA -> AB pre-fills the equal split so the user only
+        adjusts; AB -> AA keeps the people who had an amount as To.
+    Example: D pays HK$120, D had 80, E had 40 -> E owes D HK$40.
   Optional: location text or geolocation, photo (camera/gallery),
   multi-day toggle + end date, note
   Currency default:
@@ -298,7 +316,8 @@ Frontend OWNS (compute in the client)
   - CSV files
 
 Backend OWNS (do not reimplement as source of truth)
-  - share_amount rows (trigger + rounding)
+  - share_amount rows for AA (trigger + rounding)
+  - checking AB share_amount rows (sent by the UI) add up to amount
   - fx_rate_to_hkd, fx_rate_date, amount_hkd on save
   - activity_log insert
   - notification insert
@@ -335,11 +354,15 @@ Tables (fields the UI needs)
     location_text, lat, lng, photo_path, note
     fx_rate_to_hkd, fx_rate_date, amount_hkd
     currency_manually_set
+    split_method: 'equal' (AA, default) | 'exact' (AB)
     created_by, created_at, updated_at, deleted_at
 
   expense_participants
     expense_id, member_id, share_amount INTEGER
+    unique (expense_id, member_id)
     ZERO rows = personal expense
+    AA: insert expense_id + member_id only; server fills share_amount
+    AB: upsert with share_amount (on_conflict expense_id,member_id)
 
   settlements
     id, trip_id, from_member, to_member
@@ -378,11 +401,12 @@ INVARIANTS
      HKD 10.00 -> 1000 cents; JPY 3000 -> 3000; KRW 1000 -> 1000.
   2. Display with a formatter that uses currencies.decimals.
   3. Shares on screen come from expense_participants.share_amount
-     (server). Do not re-split on the client except as a preview that
-     is discarded after save.
-  4. Remainder rule if you MUST preview: q = amount / n, r = amount % n,
-     first r members by trip_members.id ascending get q+1.
-     Never "first in the on-screen list".
+     (server). AA: do not re-split on the client except as a preview
+     that is discarded after save. AB: the typed amounts are the shares;
+     never save unless they sum exactly to the amount.
+  4. AA remainder rule if you MUST preview: q = amount / n,
+     r = amount % n, first r members by trip_members.id ascending get
+     q+1. Never "first in the on-screen list".
   5. Personal = no participants. Visible. No balance effect.
   6. category === 'Loan' is included in balances, EXCLUDED from spending
      stats and trip total spending.
@@ -465,6 +489,7 @@ excludes removed_at != null.
     one multi-day hotel
     one loan
     one personal souvenir
+    one AB meal (e.g. D pays 120, D 80 + E 40)
     one trip date-range edit
     one placeholder claim
     one HKD repayment of a KRW debt
@@ -472,6 +497,7 @@ excludes removed_at != null.
     correct page for every expense
     shares visible and consistent with server rows
     personal not in balances
+    AB meal: E owes D exactly 40, form blocks amounts that don't add up
     loan in balances, not in spending total
     multi-day once in totals, pinned on every covered day
     All-in-HKD suggestions use payment-day FX, not sum(amount_hkd)

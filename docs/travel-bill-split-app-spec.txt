@@ -1,7 +1,11 @@
 ==============================================================================
  TRAVEL BILL SPLITTING WEB APP
- Feature Specification & System Design  (Version 1)
- Date: 2026-09-23
+ Feature Specification & System Design  (Version 1.1)
+ Date: 2026-09-24
+ Change log:
+   1.1 (2026-09-24)  Added AB split (exact amounts per person) next to the
+                     AA equal split. See 5.7, 5.8, 6, 7, 9, 11, 12.
+   1.0 (2026-09-23)  First version.
 ==============================================================================
 
 CONTENTS
@@ -247,8 +251,13 @@ Required
   - Amount
   - Currency     (auto-filled, user can change; see 5.8)
   - Paid by      (one member; defaults to me)
-  - To           (members who share it; defaults to everyone;
-                  clear all = personal expense, see 5.15)
+  - Split method (AA = split equally, the default; or AB = exact amount
+                  per person; see 5.8)
+  - To           AA: members who share it; defaults to everyone;
+                     clear all = personal expense, see 5.15
+                 AB: an amount for each person who had something
+                     (payer included); blank = not involved; the amounts
+                     must add up exactly to the total before saving
   - Date & time  (defaults to current page's date + current time)
   - Category     (see 5.14)
 
@@ -262,14 +271,24 @@ Display of each expense
   - Title, category icon, time
   - Amount in original currency AND in HKD
     e.g. "3,000 JPY  (HK$ 157.80)"
-  - Paid by, split between
+  - Paid by, split between (AB also lists each person's amount,
+    e.g. "by amount: D HK$ 80.00, E HK$ 40.00")
   - What it means for me, e.g. "You owe Alex HK$ 52.60"
 
 ------------------------------------------------------------------------------
 5.8 Split rules
 ------------------------------------------------------------------------------
-Rule: one person pays, split EQUALLY between the "To" people.
-The payer is included in "To" only if they also share the cost.
+One person always pays. The cost is shared in one of two ways:
+
+  AA (split equally, default)
+    Split EQUALLY between the "To" people.
+    The payer is included in "To" only if they also share the cost.
+
+  AB (exact amounts)
+    Each person's share is the amount they actually had, typed in the
+    form. The payer's own part is entered too. People left blank are not
+    involved. The shares must add up exactly to the expense amount; no
+    rounding is needed because every share is entered in smallest units.
 
 Example 1: shared meal
   Person A paid 30 HKD, To: A, B, C
@@ -289,7 +308,14 @@ Example 3: personal expense
   -> Personal expense: not part of anyone's balance,
      only counted in A's personal spending stats
 
-Rounding
+Example 4: AB (exact amounts)
+  Person D paid 120 HKD for a meal. D's own food cost 80 HKD and
+  person E's cost 40 HKD.
+  -> Split method AB, D: 80, E: 40 (adds up to 120)
+  -> E owes D 40 HKD
+  (With AA the same meal would be 60 HKD each, and E would owe D 60 HKD.)
+
+Rounding (AA only)
   - Amounts stored in the currency's smallest unit (cents for HKD, whole
     yen for JPY, whole won for KRW).
   - If it does not divide evenly, the leftover units are given one each to
@@ -514,11 +540,14 @@ expenses
   photo_path (optional), note,
   fx_rate_to_hkd, fx_rate_date, amount_hkd,
   currency_manually_set (bool),
+  split_method ('equal' = AA | 'exact' = AB; default 'equal'),
   created_by, created_at, updated_at, deleted_at (soft delete)
   -- personal expense = no rows in expense_participants
 
 expense_participants           -- the "To" people
   expense_id, member_id, share_amount (smallest unit)
+  -- unique (expense_id, member_id)
+  -- AA: share_amount computed by the server; AB: sent by the app
 
 settlements                    -- repayments
   id, trip_id, from_member, to_member,
@@ -564,7 +593,13 @@ Database triggers
   - On expense/settlement change -> create notifications for affected
     members
   - On expense save -> look up and lock fx rate, compute amount_hkd and
-    local_date, split shares with rounding rule
+    local_date, then:
+      AA: split shares with rounding rule (recompute when the amount,
+          the To people or the split method changes)
+      AB: keep the share_amount values sent by the app and reject the
+          save if they do not add up exactly to the amount
+    Because the expense and its participants are written together, a
+    save_expense RPC (one transaction) is recommended.
 
 Edge Functions
   - join_trip(code or token, claim_placeholder_id?)
@@ -614,7 +649,10 @@ Push notifications
 ==============================================================================
 
 - Amounts are never stored as floating point; always integer smallest unit.
-- Shares always add up exactly to the expense amount (rounding rule 5.8).
+- Shares always add up exactly to the expense amount (AA: rounding rule
+  5.8; AB: the app will not save until they do, and the server checks).
+- Switching an expense between AA and AB replaces its shares: AA -> the
+  server re-splits equally; AB -> the typed amounts are saved.
 - Multi-day expense counted once in totals, shown on every covered date.
 - Changing trip dates re-sorts expenses into the correct pages.
 - Changing a date's location updates currency default and timezone for new
@@ -647,7 +685,7 @@ Phase 2  Trips
 
 Phase 3  Expenses
   - Expense pages (pre-trip, days, post-trip)
-  - Expense form, equal split, personal expenses
+  - Expense form, AA equal split, AB exact-amount split, personal expenses
   - Currency auto-fill, FX rates, HKD + local display
   - Time zones, multi-day expenses, auto-move
   - Photo proof, categories
@@ -671,8 +709,9 @@ Phase 5  Collaboration & polish
 
 - Offline mode (save expenses without signal, sync later)
 - Receipt scanning to auto-fill amount, currency, merchant
-- Itemized split of one receipt (who ate what)
-- Uneven splits (exact amounts, shares) and multiple payers
+- Itemized split of one receipt (tick items per person)
+- Weighted splits (e.g. 2 shares vs 1 share) and multiple payers
+  (exact amounts per person moved into v1 as the AB split, see 5.8)
 - Trip budget with progress bar
 - PDF summary export
 - FPS / PayMe details for one-tap repayment
@@ -690,20 +729,22 @@ What v1 is
   A multi-tenant PWA for small friend groups. Trust model is "cooperative
   members of the same trip", not "hostile tenants sharing a ledger". Every
   member may create/edit/delete any expense. Integrity is enforced by
-  integer money, server-side share splits, locked FX, activity log, and
-  optional trip lock — not by per-user write isolation on expenses.
+  integer money, server-side share splits (AA) or server-checked exact
+  shares (AB), locked FX, activity log, and optional trip lock — not by
+  per-user write isolation on expenses.
 
 What v1 is not
   Not a bank, not an accounting package, not offline-first, not itemized
-  or weighted splits, not a marketplace. Settlement suggestions are a
+  receipt or weighted splits, not a marketplace. Settlement suggestions are a
   convenience UI over net balances; they are not a payment rail.
 
 Frozen invariants (must not be simplified away)
   1. Money is integer smallest units. Never float4/float8/JS number for
      amounts or shares. FX rates are numeric; amount_hkd is computed in
      the database trigger and stored as integer HKD cents.
-  2. Shares MUST sum exactly to amount (remainder to members in stable
-     order by trip_members.id, not display-list order).
+  2. Shares MUST sum exactly to amount. AA: remainder to members in stable
+     order by trip_members.id, not display-list order. AB: shares are the
+     typed amounts; a save that does not sum exactly is rejected.
   3. Page assignment uses stored local_date / end_date, not the viewer's
      phone clock.
   4. Multi-day expenses display on every covered date and count once.
@@ -731,15 +772,18 @@ Must-fix before Phase 1 ships (gaps in sections 6–7)
     need old-row payloads.
   - Client money math uses a decimal library; server remains source of
     truth for shares and amount_hkd.
+  - expenses.split_method column; unique (expense_id, member_id) on
+    expense_participants; AB sum check on the server.
 
 Explicit non-goals deferred to section 11
-  Offline queue, OCR, uneven/itemized splits, multi-payer, in-day multi
-  city, native store listing, PayMe/FPS rail.
+  Offline queue, OCR, itemized-receipt/weighted splits, multi-payer,
+  in-day multi city, native store listing, PayMe/FPS rail.
 
 Rollout bar
   A 4-person, 2-currency, 4-day trip with one multi-day hotel, one loan,
-  one personal souvenir, one date-range edit, one placeholder claim, and
-  one HKD repayment of a KRW debt — all balances exact, all pages
+  one personal souvenir, one AB (exact amounts) meal, one date-range
+  edit, one placeholder claim, and one HKD repayment of a KRW debt —
+  all balances exact, all pages
   correct, activity log complete — is the definition of "v1 done".
 
 ==============================================================================
