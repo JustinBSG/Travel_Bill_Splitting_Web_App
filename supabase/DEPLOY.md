@@ -247,8 +247,15 @@ which check their own secrets.
 
 ### D7. Auth settings (Dashboard)
 - **Authentication → Sign In / Providers → Email:** enabled, OTP length **6**, expiry **600** seconds.
-- **Authentication → Emails → Templates:** paste `supabase/templates/otp_code.html` into
-  **Magic Link** and **Confirm signup**, so emails carry the code and no link.
+- **Authentication → Emails → Templates:** templates can only be edited **after custom SMTP is
+  set up** (Emails → SMTP Settings). Then paste `supabase/templates/otp_code.html` into
+  **Magic link or OTP** and **Confirm sign up**, so emails carry the 6-digit code.
+  - **Production:** custom SMTP and this template are required.
+  - **Staging without SMTP:** the default template is used, and the built-in sender only delivers
+    to members of your Supabase organization, a few emails per hour. If the default email has a
+    link instead of a code, click it **in the same browser** where you requested it. It opens the
+    **Site URL** (set it to where you test: `http://localhost:5173` or the staging preview URL),
+    and the app finishes signing in.
 - **SMTP, Google/Apple and URL Configuration:** see the table in F.
 
 ### D8. Load exchange rates
@@ -281,8 +288,26 @@ list shows currencies your vendor doesn't cover.
    LIVE_ALLOW_REMOTE=1
    PUSH_WEBHOOK_SECRET=<staging value>
    CRON_SECRET=<staging value>
-   LIVE_ALLOWED_ORIGIN=http://localhost:5173
+   LIVE_RUN_FX=0
+   LIVE_ALLOWED_ORIGIN=https://uat-<WORKER_NAME>.<SUBDOMAIN>.workers.dev
+   LIVE_EMAIL_DOMAIN=example.com
+   LIVE_JOIN_MAX_FAILURES=10
    ```
+   All `.env.live` settings. Write values without quotes, one per line:
+
+   | Setting | Required? | What it does | Staging value |
+   |---|---|---|---|
+   | `SUPABASE_URL` | yes | API URL the suite talks to | `https://<STAGING_REF>.supabase.co` (local: `http://127.0.0.1:54321`) |
+   | `SUPABASE_ANON_KEY` | yes | public key, like the app uses | staging legacy `anon` key (local: `ANON_KEY` from `npx supabase status -o env`) |
+   | `SUPABASE_SERVICE_ROLE_KEY` | yes | admin key, used only to create and delete the throwaway test users | staging legacy `service_role` key |
+   | `LIVE_ALLOW_REMOTE` | yes for non-local URLs | safety switch: the suite refuses any URL that isn't `localhost` / `127.0.0.1` unless this is `1` | `1`. **Never** set it for production |
+   | `PUSH_WEBHOOK_SECRET` | optional | enables the check that `send_push` accepts its secret. Empty skips it | the same value as in `.env.staging` |
+   | `CRON_SECRET` | optional | used with `LIVE_RUN_FX=1` to call `fetch_fx_rates` | the same value as in `.env.staging` |
+   | `LIVE_RUN_FX` | optional | `1` really calls `fetch_fx_rates`, which uses one FX API request. `0` skips it | `0` |
+   | `LIVE_ALLOWED_ORIGIN` | optional | enables the CORS check: this origin must be allowed, and a fake one refused. It must match your staging `ALLOWED_ORIGINS`. Empty skips it | your `uat` preview origin, no trailing `/` |
+   | `LIVE_EMAIL_DOMAIN` | optional | domain for the test users `e2e-<run>-<name>@<domain>`. No email is sent to them | `example.com` |
+   | `LIVE_JOIN_MAX_FAILURES` | optional | how many bad invite codes the rate-limit test tries before expecting 429. Must equal the functions' `JOIN_RATE_LIMIT_MAX_FAILURES` | `10` (the default) |
+
    ```bash
    cd supabase/node-tests && npm run test:live
    ```
