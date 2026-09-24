@@ -202,6 +202,13 @@ test('http: CORS allows only configured origins (incl. preview wildcards); safeE
   assert.ok(!originAllowed('https://evil.dev', allowed))
   assert.ok(!originAllowed('https://a.b.tbs.pages.dev', allowed))
   assert.ok(!originAllowed('http://abc.tbs.pages.dev', allowed))
+  const preview = parseAllowedOrigins('http://localhost:5173,https://*-travel-bill-splitting-web-app.justin610810.workers.dev')
+  assert.ok(originAllowed('https://uat-travel-bill-splitting-web-app.justin610810.workers.dev', preview))
+  assert.ok(originAllowed('https://1a2b3c4d-travel-bill-splitting-web-app.justin610810.workers.dev', preview))
+  assert.ok(!originAllowed('https://travel-bill-splitting-web-app.justin610810.workers.dev', preview))
+  assert.ok(!originAllowed('https://uat-other-worker.justin610810.workers.dev', preview))
+  assert.ok(!originAllowed('https://evil.com/x-travel-bill-splitting-web-app.justin610810.workers.dev', preview))
+  assert.ok(!originAllowed('https://a.b-travel-bill-splitting-web-app.justin610810.workers.dev', preview))
   assert.deepEqual(parseAllowedOrigins(undefined), ['http://localhost:5173', 'http://127.0.0.1:5173'])
 
   const req = (origin) => new Request('https://x.supabase.co/functions/v1/join_trip', { headers: { Origin: origin } })

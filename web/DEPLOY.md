@@ -12,7 +12,7 @@ What's in the repo for this:
 
 | File | Purpose |
 |---|---|
-| `web/wrangler.jsonc` | Worker name `travel-bill-split`; serves `./dist`; SPA fallback, so `/join/<token>` and `/trips/...` load `index.html` |
+| `web/wrangler.jsonc` | Worker name `travel-bill-splitting-web-app`; serves `./dist`; SPA fallback, so `/join/<token>` and `/trips/...` load `index.html` |
 | `web/scripts/build-cloudflare.mjs` (`npm run build:cloudflare`) | picks `PROD_VITE_*` on the production branch and `STAGING_VITE_*` on other branches, then runs `npm run build` |
 
 **Contents**
@@ -35,8 +35,8 @@ What's in the repo for this:
 
 | You push to… | Cloudflare… | URL | Uses backend |
 |---|---|---|---|
-| the **production branch** (`main`) | builds with `PROD_*` values and **deploys**, replacing the live site | `https://travel-bill-split.<subdomain>.workers.dev` (+ custom domain) | production |
-| any other branch (`uat`, `frontend`, …) | builds with `STAGING_*` values and updates that branch's **Preview**; the live site is unchanged | `https://<branch>-travel-bill-split.<subdomain>.workers.dev` (e.g. `uat-travel-bill-split…`) | staging |
+| the **production branch** (`main`) | builds with `PROD_*` values and **deploys**, replacing the live site | `https://travel-bill-splitting-web-app.<subdomain>.workers.dev` (+ custom domain) | production |
+| any other branch (`uat`, `frontend`, …) | builds with `STAGING_*` values and updates that branch's **Preview**; the live site is unchanged | `https://<branch>-travel-bill-splitting-web-app.<subdomain>.workers.dev` (e.g. `uat-travel-bill-splitting-web-app…`) | staging |
 
 So **yes**, a push to `main` updates production automatically, usually within 1–3 minutes, and
 pushes to other branches never touch production.
@@ -76,7 +76,7 @@ npx wrangler dev
 
    | Field | Value |
    |---|---|
-   | Project name / Worker name | `travel-bill-split`. It **must match** `"name"` in `web/wrangler.jsonc`; change both if you want another name |
+   | Project name / Worker name | `travel-bill-splitting-web-app`. It **must match** `"name"` in `web/wrangler.jsonc`; change both if you want another name |
    | Build command | `npm run build:cloudflare` |
    | Deploy command | `npx wrangler deploy` (the default) |
    | Non-production branch deploy / preview command | leave the default |
@@ -129,8 +129,8 @@ With **Enable Preview Builds** ticked, every push to `uat` runs the build with t
 values, then `npx wrangler preview`. That creates or updates a Preview named after the branch:
 
 - **Preview URL**, always the latest `uat` build:
-  `https://uat-travel-bill-split.<subdomain>.workers.dev`. This is your staging site.
-- **Deployment URL**, one fixed build: `https://<deployment-id>-travel-bill-split.<subdomain>.workers.dev`.
+  `https://uat-travel-bill-splitting-web-app.<subdomain>.workers.dev`. This is your staging site.
+- **Deployment URL**, one fixed build: `https://<deployment-id>-travel-bill-splitting-web-app.<subdomain>.workers.dev`.
 
 You don't need a production deployment first: Cloudflare can create a Preview before the Worker
 has ever been deployed to production. The Worker page's preview dropdown shows each Preview's
@@ -154,12 +154,12 @@ npx wrangler preview --name uat
 ### Production and other URLs
 
 - **Production:** Worker → **Settings** → **Domains & Routes** shows
-  `travel-bill-split.<subdomain>.workers.dev`. `<subdomain>` is your account's workers.dev
+  `travel-bill-splitting-web-app.<subdomain>.workers.dev`. `<subdomain>` is your account's workers.dev
   subdomain (also shown on the Workers & Pages overview page, or under **Account settings →
   workers.dev subdomain**).
 - **Previews:** each non-production build prints its preview URL in the build log and under
   **Deployments** (or **Versions**). If branch aliases are enabled, `uat` gets a stable address
-  like `https://uat-travel-bill-split.<subdomain>.workers.dev`.
+  like `https://uat-travel-bill-splitting-web-app.<subdomain>.workers.dev`.
 - If **Preview URLs** are off: **Settings → Domains & Routes** → enable **Preview URLs**.
 
 ## 7. Custom domain (optional)
@@ -175,12 +175,12 @@ The backend only accepts browser calls and sign-in redirects from known addresse
 
 | Where | Staging project | Production project |
 |---|---|---|
-| `supabase/functions/.env.<env>`: `ALLOWED_ORIGINS` | `http://localhost:5173,https://*.<subdomain>.workers.dev` | `https://travel-bill-split.<subdomain>.workers.dev` (+ `,https://<custom-domain>`) |
-| Supabase → Authentication → URL Configuration → Redirect URLs | `http://localhost:5173/**`, `https://*.<subdomain>.workers.dev/**` | `https://travel-bill-split.<subdomain>.workers.dev/**` (+ `https://<custom-domain>/**`) |
+| `supabase/functions/.env.<env>`: `ALLOWED_ORIGINS` | `http://localhost:5173,https://*-travel-bill-splitting-web-app.<subdomain>.workers.dev` | `https://travel-bill-splitting-web-app.<subdomain>.workers.dev` (+ `,https://<custom-domain>`) |
+| Supabase → Authentication → URL Configuration → Redirect URLs | `http://localhost:5173/**`, `https://*-travel-bill-splitting-web-app.<subdomain>.workers.dev/**` | `https://travel-bill-splitting-web-app.<subdomain>.workers.dev/**` (+ `https://<custom-domain>/**`) |
 | Supabase → Authentication → URL Configuration → Site URL | `http://localhost:5173` | the custom domain, or the workers.dev URL |
 
-On staging, `*.<subdomain>.workers.dev` also matches any other Worker on your account. That's fine
-for a test project; production lists exact origins only.
+`*` matches one host label, so the staging pattern covers this Worker's previews
+(`uat-…`, deployment IDs) and nothing else. Production lists exact origins only.
 
 Apply the new origins:
 ```bash

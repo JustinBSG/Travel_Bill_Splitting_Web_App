@@ -2,8 +2,8 @@
 // Workers Builds runs `npm run build:cloudflare`, then `npx wrangler deploy`
 // from web/ (see web/DEPLOY.md).
 {
-  // becomes https://travel-bill-split.<your-subdomain>.workers.dev
-  "name": "travel-bill-split",
+  // becomes https://travel-bill-splitting-web-app.<your-subdomain>.workers.dev
+  "name": "travel-bill-splitting-web-app",
   "compatibility_date": "2026-09-01",
   "assets": {
     "directory": "./dist",

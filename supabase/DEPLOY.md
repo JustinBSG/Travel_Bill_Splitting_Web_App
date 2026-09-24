@@ -305,9 +305,9 @@ these differences:
 | Setting | Staging | Production |
 |---|---|---|
 | Secrets (D4) | its own | **new** ones: never copy staging's |
-| `ALLOWED_ORIGINS` | `http://localhost:5173,https://*.<SUBDOMAIN>.workers.dev` | `https://travel-bill-split.<SUBDOMAIN>.workers.dev,https://<CUSTOM_DOMAIN>` |
+| `ALLOWED_ORIGINS` | `http://localhost:5173,https://*-travel-bill-splitting-web-app.<SUBDOMAIN>.workers.dev` | `https://travel-bill-splitting-web-app.<SUBDOMAIN>.workers.dev,https://<CUSTOM_DOMAIN>` |
 | Auth → Site URL | `http://localhost:5173` | `https://<CUSTOM_DOMAIN>` (or the workers.dev URL) |
-| Auth → Redirect URLs | `http://localhost:5173/**`, `https://*.<SUBDOMAIN>.workers.dev/**` | `https://travel-bill-split.<SUBDOMAIN>.workers.dev/**`, `https://<CUSTOM_DOMAIN>/**` |
+| Auth → Redirect URLs | `http://localhost:5173/**`, `https://*-travel-bill-splitting-web-app.<SUBDOMAIN>.workers.dev/**` | `https://travel-bill-splitting-web-app.<SUBDOMAIN>.workers.dev/**`, `https://<CUSTOM_DOMAIN>/**` |
 | SMTP (Authentication → Emails → SMTP Settings) | built-in is OK | **custom SMTP required** (Resend, Postmark, …). The built-in sender allows only a few emails per hour |
 | Google / Apple | optional | configure both; callback `https://<PROD_REF>.supabase.co/auth/v1/callback` |
 | Vault `project_url` | `https://<STAGING_REF>.supabase.co` | `https://<PROD_REF>.supabase.co` |

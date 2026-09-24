@@ -7,8 +7,11 @@ const DEV_ORIGINS = ['http://localhost:5173', 'http://127.0.0.1:5173']
 
 /**
  * ALLOWED_ORIGINS is a comma-separated list of exact origins and/or
- * "https://*.example.pages.dev" wildcards (one subdomain level, for Pages
- * preview deployments). Unset -> local Vite dev origins only.
+ * wildcard origins. A `*` matches letters, digits and hyphens inside ONE
+ * host label (never a dot), e.g.
+ *   https://*.example.workers.dev                      any single subdomain
+ *   https://*-my-worker.example.workers.dev            this Worker's previews
+ * Unset -> local Vite dev origins only.
  */
 export function parseAllowedOrigins(value: string | undefined): string[] {
   const list = (value ?? '')
@@ -18,18 +21,15 @@ export function parseAllowedOrigins(value: string | undefined): string[] {
   return list.length ? list : DEV_ORIGINS
 }
 
+function wildcardToRegExp(rule: string): RegExp {
+  const escaped = rule.replace(/[.+?^${}()|[\]\\/]/g, '\\$&').replace(/\*/g, '[a-z0-9-]+')
+  return new RegExp(`^${escaped}$`, 'i')
+}
+
 export function originAllowed(origin: string, allowed: string[]): boolean {
   for (const rule of allowed) {
     if (rule === origin) return true
-    const star = rule.indexOf('://*.')
-    if (star !== -1) {
-      const scheme = rule.slice(0, star + 3)
-      const suffix = rule.slice(star + 4) // ".example.pages.dev"
-      if (origin.startsWith(scheme) && origin.endsWith(suffix)) {
-        const label = origin.slice(scheme.length, origin.length - suffix.length)
-        if (/^[a-z0-9-]+$/i.test(label)) return true
-      }
-    }
+    if (rule.includes('*') && wildcardToRegExp(rule).test(origin)) return true
   }
   return false
 }
