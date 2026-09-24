@@ -22,7 +22,9 @@ backend/
   templates/otp_code.html     email OTP template (6-digit code, no link)
   seed.sql                    local-only sample FX rates
   scripts/supabase.mjs        CLI bridge (see below)
-  tests/                      PGlite acceptance tests + Edge Function unit tests
+  tests/                      pgTAP tests, run by `supabase test db` on the real database
+  node-tests/                 Node tests: offline/ (PGlite, no Supabase needed), live/ (HTTP end-to-end)
+  DEPLOY.md                   step-by-step deploy, verification and troubleshooting
 ```
 
 ## The CLI bridge (why there's a script)
@@ -41,85 +43,50 @@ node backend/scripts/supabase.mjs db push
 
 It uses `supabase` from PATH, or whatever is in `SUPABASE_BIN` (for example `SUPABASE_BIN="npx supabase"`).
 
-## Deploy (one-time setup, then `db push` / `functions deploy`)
+## Deploy
 
-1. **Create the project** in `ap-southeast-1` (Singapore) or `ap-northeast-1` (Tokyo).
-2. **Link and push the schema:**
-   ```bash
-   node backend/scripts/supabase.mjs link --project-ref <PROJECT_REF>
-   ```
-   ```bash
-   node backend/scripts/supabase.mjs db push
-   ```
-3. **Vault secrets.** pg_cron and the database triggers read these. Run once in the SQL editor:
-   ```sql
-   select vault.create_secret('https://<PROJECT_REF>.supabase.co', 'project_url');
-   select vault.create_secret('<random 32+ chars>', 'cron_secret');          -- = CRON_SECRET
-   select vault.create_secret('<random 32+ chars>', 'push_webhook_secret');  -- = PUSH_WEBHOOK_SECRET
-   select vault.create_secret('<service_role key>', 'service_role_key');     -- delete_trip photo cleanup
-   ```
-4. **Edge Function secrets.** Copy `functions/.env.example` to `functions/.env` (git-ignored), fill it in, then:
-   ```bash
-   node backend/scripts/supabase.mjs secrets set --env-file backend/functions/.env
-   ```
-   ```bash
-   node backend/scripts/supabase.mjs functions deploy
-   ```
-   `verify_jwt` comes from `config.toml`: on for `join_trip` / `regenerate_invite`; off for
-   `fetch_fx_rates` / `send_push`, which check `CRON_SECRET` / `PUSH_WEBHOOK_SECRET` themselves.
-5. **Auth (Dashboard, not code):**
-   - Email: turn on email OTP with a 6-digit code. Paste `templates/otp_code.html` into the
-     *Magic Link* and *Confirm signup* templates, so emails carry the code and no link.
-   - Providers: Google and Apple.
-   - Site URL and redirect allowlist: `http://localhost:5173`, the Pages production URL,
-     `https://*.<project>.pages.dev` for previews, and the custom domain.
-6. **First FX fetch.** Don't wait for the 00:10 HKT cron run:
-   ```bash
-   curl -X POST https://<PROJECT_REF>.supabase.co/functions/v1/fetch_fx_rates -H "x-cron-secret: <CRON_SECRET>"
-   ```
-   Backfill a past date with `-d '{"date":"2026-09-01"}'` (Open Exchange Rates and Frankfurter
-   support this; ExchangeRate-API needs a paid plan). Frankfurter doesn't cover every seeded
-   currency (TWD, VND, …). The response lists what's `missing`.
-7. **Frontend env:** `web/.env.local` needs `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` and
-   `VITE_VAPID_PUBLIC_KEY`. Never put the service role key there.
+Step-by-step instructions are in **[DEPLOY.md](DEPLOY.md)**: create the project, link, `db push`,
+Vault and function secrets, `functions deploy`, Auth settings, first FX fetch, verification,
+connecting the frontend, shipping later changes, the local stack and troubleshooting. In short:
+
+```bash
+node backend/scripts/supabase.mjs link --project-ref <PROJECT_REF>
+```
+```bash
+node backend/scripts/supabase.mjs db push
+```
+```bash
+node backend/scripts/supabase.mjs secrets set --env-file backend/functions/.env
+```
+```bash
+node backend/scripts/supabase.mjs functions deploy --use-api
+```
 
 Scheduled jobs (pg_cron): `fetch-fx-rates` runs at 16:10 UTC (00:10 HKT) and `fetch-fx-rates-retry`
 at 22:10 UTC. The retry skips the vendor call when today's rates are already stored.
 `purge-join-attempts` runs daily.
 
-### Local development
-
-```bash
-node backend/scripts/supabase.mjs start
-```
-```bash
-node backend/scripts/supabase.mjs db reset
-```
-```bash
-node backend/scripts/supabase.mjs functions serve --env-file backend/functions/.env
-```
-
-`db reset` loads `seed.sql`, which holds sample FX rates for today, so expenses save without an FX
-key. Emails appear in the local inbox at http://localhost:54324.
-
 ## Tests
 
-```bash
-cd backend/tests && npm install && npm test
-```
+| Suite | Runs against | Command |
+|---|---|---|
+| `node-tests/offline/` | PGlite (Postgres 18 in WASM) + stand-ins for Supabase's `auth`, `storage`, `vault`, `pg_net`, `pg_cron`. No Supabase or Docker needed | `cd backend/node-tests && npm install && npm test` |
+| `tests/*.test.sql` (pgTAP) | the real database, local or deployed; one transaction per file, rolled back | `node backend/scripts/supabase.mjs test db [--linked]` |
+| `node-tests/live/` | the real HTTP API of the local stack or a **staging** project | `cd backend/node-tests && npm run test:live` |
 
-- `acceptance.test.mjs` applies every migration to PGlite (Postgres 18 compiled to WASM) with small
-  stand-ins for Supabase's `auth`, `storage`, `vault`, `pg_net` and `pg_cron`. It then plays the §10
-  acceptance trip: 4 people, KRW + HKD, 4 days, a multi-day hotel, a loan, a personal souvenir, an
-  AB meal, a date-range edit, a placeholder claim, and an HKD repayment of a KRW debt with an
-  idempotent replay. After that it locks the trip, regenerates the invite, uploads photos and deletes
-  the trip, checking every invariant along the way.
-- `functions.test.mjs` checks Web Push encryption byte-for-byte against the RFC 8291 test vector,
-  plus VAPID signatures, push texts, FX adapters (including API-key redaction) and CORS.
-
-Not covered here: Realtime delivery itself, Storage signed URLs, and the Auth emails. Those need a
-real project. The tests only check the prerequisites (publication, replica identity, RLS, private
-bucket).
+- **Offline** (34 tests): `acceptance.test.mjs` plays the §10 acceptance trip. That's 4 people,
+  KRW + HKD, 4 days, a multi-day hotel, a loan, a personal souvenir, an AB meal, a date-range
+  edit, a placeholder claim, and an HKD repayment of a KRW debt with an idempotent replay. After
+  that it locks the trip, regenerates the invite, uploads photos and deletes the trip.
+  `functions.test.mjs` checks Web Push against the RFC 8291 test vector, plus VAPID, push texts,
+  FX adapters and CORS. `pgtap.test.mjs` runs the pgTAP files below on PGlite, so they are
+  checked on every run too.
+- **pgTAP** (67 checks): `01_platform` covers grants, RLS, storage, Realtime, cron and the seed.
+  `02_behaviour` covers the core flows as real users inside one rolled-back transaction.
+- **Live**: Realtime delivery to a second member, photos unreachable without a signed URL, no
+  invite code in a member's `GET /trips`, and join / claim / regenerate through the Edge
+  Functions. Also rate limiting, locked-trip errors over HTTP, the machine-function secrets and
+  CORS. It creates throwaway users and deletes them at the end; never point it at production.
 
 ## API reference
 

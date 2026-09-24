@@ -10,5 +10,7 @@ functions/.env
 functions/.env.*
 !functions/.env.example
 
-# Test tooling
-tests/node_modules/
+# Test tooling (node-tests/.env.live holds staging keys)
+node-tests/node_modules/
+node-tests/.env.live
+!.env.live.example

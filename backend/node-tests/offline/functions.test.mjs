@@ -2,9 +2,9 @@
 // which strips the TypeScript types on import).
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { addDays, hongKongDate, parseRatesJson, providerFromEnv } from '../functions/_shared/fx_providers.ts'
-import { corsHeaders, originAllowed, parseAllowedOrigins, safeEqual } from '../functions/_shared/http.ts'
-import { buildPushMessage } from '../functions/_shared/push_messages.ts'
+import { addDays, hongKongDate, parseRatesJson, providerFromEnv } from '../../functions/_shared/fx_providers.ts'
+import { corsHeaders, originAllowed, parseAllowedOrigins, safeEqual } from '../../functions/_shared/http.ts'
+import { buildPushMessage } from '../../functions/_shared/push_messages.ts'
 import {
   b64urlDecode,
   b64urlEncode,
@@ -12,7 +12,7 @@ import {
   importP256PrivateKey,
   sendWebPush,
   vapidAuthorization,
-} from '../functions/_shared/webpush.ts'
+} from '../../functions/_shared/webpush.ts'
 
 const enc = new TextEncoder()
 

@@ -1,0 +1,15 @@
+{
+  "name": "travel-bill-split-backend-node-tests",
+  "private": true,
+  "type": "module",
+  "description": "Backend tests in Node. offline/: migrations + pgTAP files on PGlite (embedded Postgres) and Edge Function unit tests, no Supabase needed. live/: end-to-end against a running Supabase (local or staging).",
+  "scripts": {
+    "test": "node --test \"offline/*.test.mjs\"",
+    "test:live": "node --test --test-concurrency=1 \"live/*.test.mjs\""
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "@electric-sql/pglite-pgtap": "^0.0.9",
+    "@supabase/supabase-js": "^2.117.1"
+  }
+}

@@ -6,12 +6,14 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { PGlite } from '@electric-sql/pglite'
 import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto'
+import { pgtap } from '@electric-sql/pglite-pgtap'
 
 const here = dirname(fileURLToPath(import.meta.url))
-const migrationsDir = join(here, '..', 'migrations')
+const migrationsDir = join(here, '..', '..', 'migrations')
 
-export async function createDb() {
-  const pg = new PGlite({ extensions: { pgcrypto } })
+/** { pgtap: true } also installs pgTAP in schema extensions, as `supabase test db` does. */
+export async function createDb({ pgtap: withPgtap = false } = {}) {
+  const pg = new PGlite({ extensions: withPgtap ? { pgcrypto, pgtap } : { pgcrypto } })
   await pg.exec(readFileSync(join(here, 'supabase_stubs.sql'), 'utf8'))
   for (const file of readdirSync(migrationsDir).filter((f) => f.endsWith('.sql')).sort()) {
     try {
@@ -20,6 +22,10 @@ export async function createDb() {
       e.message = `${file}: ${e.message}`
       throw e
     }
+  }
+  if (withPgtap) {
+    // Supabase's postgres role has extensions on its search_path
+    await pg.exec('create extension pgtap with schema extensions; set search_path = "$user", public, extensions;')
   }
   return new Db(pg)
 }
