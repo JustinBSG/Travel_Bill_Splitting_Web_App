@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Settle up</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;600;700&amp;family=Zen+Kaku+Gothic+New:wght@400;500;700&amp;family=Noto+Sans+TC:wght@400;500;700&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div style="width: 390px; height: 2400px; position: relative; overflow: hidden; box-sizing: border-box; display: flex; flex-direction: column; color-scheme: {{scheme}}; --paper: light-dark(#F3EEE3, #1B1916); --sheet: light-dark(#FBF8F2, #24221E); --sheet-2: light-dark(#EAE3D5, #2E2B26); --ink: light-dark(#26221D, #EDE6D8); --ink-2: light-dark(#5C554C, #BDB4A5); --ink-3: light-dark(#6F675C, #9C9384); --rule: light-dark(#DDD4C4, #37332D); --rule-2: light-dark(#CBC0AD, #48433B); --field: light-dark(#8E8577, #7A7266); --btn: light-dark(#26221D, #EDE6D8); --on-btn: light-dark(#FBF8F2, #1B1916); --shu: #C0462A; --on-shu: #FFF8F1; --shu-ink: light-dark(#A63A21, #F08C6C); --shu-wash: light-dark(#F5E1D7, #3B241C); --ai: light-dark(#27456E, #9DB8DE); --ai-wash: light-dark(#E0E7EF, #1E2936); --matcha-wash: light-dark(#E3E6D2, #2A2F22); --kincha-wash: light-dark(#F0E4C8, #3A3121); --warn-ink: light-dark(#7A5A12, #E6C77A); --warn-wash: light-dark(#F4EACD, #3A3120); --stamp: light-dark(#B8412A, #E0765A); --shadow: light-dark(rgb(72 52 24 / 0.10), rgb(0 0 0 / 0.40)); --fab-shadow: light-dark(rgb(150 52 24 / 0.55), rgb(0 0 0 / 0.70)); --scrim: light-dark(rgb(38 30 20 / 0.42), rgb(0 0 0 / 0.62)); --grain: light-dark(rgb(92 66 28 / 0.18), rgb(255 238 210 / 0.07)); --mincho: 'Shippori Mincho', 'Noto Serif TC', serif; background: var(--paper); color: var(--ink); font-family: 'Zen Kaku Gothic New', 'Noto Sans TC', system-ui, sans-serif; font-size: 15px; line-height: 1.5;">
+
+<header style="flex-shrink: 0; height: 56px; display: flex; align-items: center; gap: 2px; padding: 0 6px; border-bottom: 1px solid var(--rule);">
+<a href="{{nav.trips}}" aria-label="My trips" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 10px; color: var(--ink); text-decoration: none; flex-shrink: 0;"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg></a>
+<h1 style="flex-grow: 1; min-width: 0; margin: 0; font-family: var(--mincho); font-size: 18px; font-weight: 600; letter-spacing: 0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Tokyo &amp; Osaka</h1>
+<button type="button" aria-label="Notifications, 2 unread" style="position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; padding: 0; border: 0; border-radius: 10px; background: transparent; color: var(--ink); cursor: pointer;"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 16.5V11a5.5 5.5 0 0 1 11 0v5.5l1.5 1.5h-14z"></path><path d="M10 20.5a2.2 2.2 0 0 0 4 0"></path></svg><span aria-hidden="true" style="position: absolute; top: 10px; right: 11px; width: 8px; height: 8px; border-radius: 50%; background: var(--shu); box-shadow: 0 0 0 2px var(--paper);"></span></button>
+<a href="{{nav.menu}}" aria-label="Trip menu" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 10px; color: var(--ink); text-decoration: none;"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 12h.01M12 12h.01M18.5 12h.01"></path></svg></a>
+</header>
+
+<nav aria-label="Trip pages" style="flex-shrink: 0; height: 60px; overflow: hidden; border-bottom: 1px solid var(--rule);">
+<div style="display: flex; align-items: stretch; gap: 2px; height: 60px; width: max-content; padding: 0 10px; margin-left: -178px;">
+<a href="{{nav.overview}}" style="display: flex; align-items: center; padding: 0 12px; font-size: 14px; font-weight: 500; color: var(--ink-2); text-decoration: none; white-space: nowrap;">Overview</a>
+<button type="button" style="display: flex; align-items: center; padding: 0 12px; border: 0; background: transparent; font-family: inherit; font-size: 14px; font-weight: 500; color: var(--ink-2); white-space: nowrap; cursor: pointer;">Pre-trip</button>
+<button type="button" aria-label="Day 1, Saturday 10 October" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; width: 50px; padding: 0; border: 0; background: transparent; font-family: inherit; cursor: pointer;"><span style="font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; color: var(--ai);">SAT</span><span style="font-family: var(--mincho); font-size: 20px; font-weight: 600; line-height: 1.15; color: var(--ink-2);">10</span></button>
+<a href="{{nav.day}}" aria-label="Day 2, Sunday 11 October, today" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; width: 50px; text-decoration: none;"><span style="font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; color: var(--shu-ink);">SUN</span><span style="font-family: var(--mincho); font-size: 20px; font-weight: 600; line-height: 1.15; color: var(--ink-2);">11</span></a>
+<button type="button" aria-label="Day 3, Monday 12 October" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; width: 50px; padding: 0; border: 0; background: transparent; font-family: inherit; cursor: pointer;"><span style="font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; color: var(--ink-3);">MON</span><span style="font-family: var(--mincho); font-size: 20px; font-weight: 600; line-height: 1.15; color: var(--ink-2);">12</span></button>
+<button type="button" aria-label="Day 4, Tuesday 13 October" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; width: 50px; padding: 0; border: 0; background: transparent; font-family: inherit; cursor: pointer;"><span style="font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; color: var(--ink-3);">TUE</span><span style="font-family: var(--mincho); font-size: 20px; font-weight: 600; line-height: 1.15; color: var(--ink-2);">13</span></button>
+<button type="button" style="display: flex; align-items: center; padding: 0 12px; border: 0; background: transparent; font-family: inherit; font-size: 14px; font-weight: 500; color: var(--ink-2); white-space: nowrap; cursor: pointer;">Post-trip</button>
+<a href="{{nav.settle}}" aria-current="page" style="position: relative; display: flex; align-items: center; padding: 0 12px; font-size: 14px; font-weight: 700; color: var(--ink); text-decoration: none; white-space: nowrap;">Settle up<span aria-hidden="true" style="position: absolute; left: 50%; bottom: 0; width: 22px; height: 3px; margin-left: -11px; border-radius: 2px 2px 0 0; background: var(--shu);"></span></a>
+</div>
+</nav>
+
+<main style="flex-grow: 1; display: flex; flex-direction: column; gap: 28px; padding: 24px 20px 40px;">
+
+<section style="display: flex; flex-direction: column; gap: 16px;">
+<h2 style="margin: 0; font-family: var(--mincho); font-size: 30px; font-weight: 600; line-height: 1.2;">Settle up</h2>
+<div role="group" aria-label="Settlement view" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 3px; border-radius: 11px; background: var(--sheet-2);">
+<button type="button" aria-pressed="{{isHkd}}" onClick="{{showHkd}}" style="height: 44px; border: 0; border-radius: 9px; background: {{segHkd.bg}}; color: {{segHkd.fg}}; box-shadow: {{segHkd.sh}}; font-family: inherit; font-size: 14.5px; font-weight: {{segHkd.w}}; cursor: pointer;">All in HKD</button>
+<button type="button" aria-pressed="{{isCur}}" onClick="{{showCur}}" style="height: 44px; border: 0; border-radius: 9px; background: {{segCur.bg}}; color: {{segCur.fg}}; box-shadow: {{segCur.sh}}; font-family: inherit; font-size: 14.5px; font-weight: {{segCur.w}}; cursor: pointer;">By currency</button>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 12px;">
+<div style="display: flex; align-items: baseline; justify-content: space-between;">
+<h3 style="margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; color: var(--ink-3);">WHO PAYS WHOM</h3>
+<sc-if value="{{isHkd}}" hint-placeholder-val="{{true}}"><span style="font-size: 13px; color: var(--ink-3);">3 payments settle everyone</span></sc-if>
+<sc-if value="{{isCur}}" hint-placeholder-val="{{false}}"><span style="font-size: 13px; color: var(--ink-3);">6 payments, 2 currencies</span></sc-if>
+</div>
+
+<sc-if value="{{isHkd}}" hint-placeholder-val="{{true}}">
+<div style="display: flex; flex-direction: column; gap: 12px; padding: 16px; background: var(--sheet); border: 1.5px solid var(--ink); border-radius: 14px; box-shadow: 0 1px 2px var(--shadow);">
+<span style="font-size: 11.5px; font-weight: 700; letter-spacing: 0.12em; color: var(--ink-2);">YOUR PAYMENT</span>
+<div style="display: flex; align-items: center; gap: 8px;">
+<span aria-hidden="true" style="width: 30px; height: 30px; border-radius: 50%; background: var(--shu-wash); display: flex; align-items: center; justify-content: center; font-size: 12.5px; font-weight: 700;">M</span><span style="font-weight: 700;">You</span>
+<svg aria-label="pay" role="img" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color: var(--ink-3);"><path d="M4.5 12h15M13.5 6l6 6-6 6"></path></svg>
+<span aria-hidden="true" style="width: 30px; height: 30px; border-radius: 50%; background: var(--ai-wash); display: flex; align-items: center; justify-content: center; font-size: 12.5px; font-weight: 700;">A</span><span style="font-weight: 500;">Alex</span>
+</div>
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+<span style="font-family: var(--mincho); font-size: 27px; font-weight: 600; line-height: 1.2;">HK$ 2,630.54</span>
+<a href="{{nav.markpaid}}" style="height: 44px; display: flex; align-items: center; padding: 0 16px; border-radius: 11px; background: var(--btn); color: var(--on-btn); font-size: 14.5px; font-weight: 700; text-decoration: none; white-space: nowrap;">Mark paid</a>
+</div>
+</div>
+<ul style="list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--rule);">
+<li style="display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--rule);">
+<span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+<span style="display: flex; align-items: center; gap: 7px; font-size: 14.5px;"><span aria-hidden="true" style="width: 26px; height: 26px; border-radius: 50%; border: 1.5px dashed var(--field); box-sizing: border-box; display: flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 700; color: var(--ink-2);">S</span>Sam<svg aria-label="pays" role="img" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="color: var(--ink-3);"><path d="M4.5 12h15M13.5 6l6 6-6 6"></path></svg>Alex</span>
+<strong style="font-size: 16px; font-weight: 700;">HK$ 3,924.98</strong>
+</span>
+<button type="button" style="height: 44px; padding: 0 14px; border: 1px solid var(--field); border-radius: 11px; background: transparent; color: var(--ink); font-family: inherit; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap;">Mark paid</button>
+</li>
+<li style="display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--rule);">
+<span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+<span style="display: flex; align-items: center; gap: 7px; font-size: 14.5px;"><span aria-hidden="true" style="width: 26px; height: 26px; border-radius: 50%; background: var(--matcha-wash); display: flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 700;">J</span>Jun<svg aria-label="pays" role="img" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="color: var(--ink-3);"><path d="M4.5 12h15M13.5 6l6 6-6 6"></path></svg>Alex</span>
+<strong style="font-size: 16px; font-weight: 700;">HK$ 2,511.10</strong>
+</span>
+<button type="button" style="height: 44px; padding: 0 14px; border: 1px solid var(--field); border-radius: 11px; background: transparent; color: var(--ink); font-family: inherit; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap;">Mark paid</button>
+</li>
+</ul>
+<p style="margin: 0; font-size: 12.5px; color: var(--ink-3); text-wrap: pretty;">Converted at the 11 Oct mid-market rate. Suggestions are recalculated after every change.</p>
+</sc-if>
+
+<sc-if value="{{isCur}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; flex-direction: column;">
+<h4 style="margin: 0; padding: 4px 0 6px; font-size: 13px; font-weight: 700; color: var(--ink-2);">HKD</h4>
+<ul style="list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--rule);">
+<li style="display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--rule);">
+<span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0;"><span style="display: flex; align-items: center; gap: 7px; font-size: 14.5px;"><strong style="font-weight: 700;">You</strong><svg aria-label="pay" role="img" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="color: var(--ink-3);"><path d="M4.5 12h15M13.5 6l6 6-6 6"></path></svg>Alex</span><strong style="font-size: 16px; font-weight: 700;">HK$ 1,780.00</strong></span>
+<button type="button" style="height: 44px; padding: 0 14px; border: 0; border-radius: 11px; background: var(--btn); color: var(--on-btn); font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap;">Mark paid</button>
+</li>
+<li style="display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--rule);">
+<span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0;"><span style="display: flex; align-items: center; gap: 7px; font-size: 14.5px;">Jun<svg aria-label="pays" role="img" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="color: var(--ink-3);"><path d="M4.5 12h15M13.5 6l6 6-6 6"></path></svg>Alex</span><strong style="font-size: 16px; font-weight: 700;">HK$ 2,580.00</strong></span>
+<button type="button" style="height: 44px; padding: 0 14px; border: 1px solid var(--field); border-radius: 11px; background: transparent; color: var(--ink); font-family: inherit; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap;">Mark paid</button>
+</li>
+<li style="display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--rule);">
+<span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0;"><span style="display: flex; align-items: center; gap: 7px; font-size: 14.5px;">Sam<svg aria-label="pays" role="img" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="color: var(--ink-3);"><path d="M4.5 12h15M13.5 6l6 6-6 6"></path></svg>Alex</span><strong style="font-size: 16px; font-weight: 700;">HK$ 2,580.00</strong></span>
+<button type="button" style="height: 44px; padding: 0 14px; border: 1px solid var(--field); border-radius: 11px; background: transparent; color: var(--ink); font-family: inherit; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap;">Mark paid</button>
+</li>
+</ul>
+<h4 style="margin: 0; padding: 18px 0 6px; font-size: 13px; font-weight: 700; color: var(--ink-2);">JPY</h4>
+<ul style="list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--rule);">
+<li style="display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--rule);">
+<span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0;"><span style="display: flex; align-items: center; gap: 7px; font-size: 14.5px;"><strong style="font-weight: 700;">You</strong><svg aria-label="pay" role="img" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="color: var(--ink-3);"><path d="M4.5 12h15M13.5 6l6 6-6 6"></path></svg>Alex</span><span style="display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 8px;"><strong style="font-size: 16px; font-weight: 700;">14,860 JPY</strong><span style="font-size: 12.5px; color: var(--ink-3);">about HK$ 781.64</span></span></span>
+<a href="{{nav.markpaidjpy}}" style="height: 44px; display: flex; align-items: center; padding: 0 14px; border-radius: 11px; background: var(--btn); color: var(--on-btn); font-size: 14px; font-weight: 700; text-decoration: none; white-space: nowrap;">Mark paid</a>
+</li>
+<li style="display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--rule);">
+<span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0;"><span style="display: flex; align-items: center; gap: 7px; font-size: 14.5px;"><strong style="font-weight: 700;">You</strong><svg aria-label="pay" role="img" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="color: var(--ink-3);"><path d="M4.5 12h15M13.5 6l6 6-6 6"></path></svg>Jun</span><span style="display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 8px;"><strong style="font-size: 16px; font-weight: 700;">1,310 JPY</strong><span style="font-size: 12.5px; color: var(--ink-3);">about HK$ 68.91</span></span></span>
+<button type="button" style="height: 44px; padding: 0 14px; border: 0; border-radius: 11px; background: var(--btn); color: var(--on-btn); font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap;">Mark paid</button>
+</li>
+<li style="display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--rule);">
+<span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0;"><span style="display: flex; align-items: center; gap: 7px; font-size: 14.5px;">Sam<svg aria-label="pays" role="img" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="color: var(--ink-3);"><path d="M4.5 12h15M13.5 6l6 6-6 6"></path></svg>Alex</span><span style="display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 8px;"><strong style="font-size: 16px; font-weight: 700;">25,570 JPY</strong><span style="font-size: 12.5px; color: var(--ink-3);">about HK$ 1,344.98</span></span></span>
+<button type="button" style="height: 44px; padding: 0 14px; border: 1px solid var(--field); border-radius: 11px; background: transparent; color: var(--ink); font-family: inherit; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap;">Mark paid</button>
+</li>
+</ul>
+</div>
+<p style="margin: 0; font-size: 12.5px; color: var(--ink-3); text-wrap: pretty;">Each currency is settled on its own. You can still pay a JPY debt in HKD when you mark it paid.</p>
+</sc-if>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 4px;">
+<div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px;">
+<h3 style="margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; color: var(--ink-3);">BALANCES</h3>
+<span style="font-size: 12.5px; color: var(--ink-3);">+ is owed, − owes</span>
+</div>
+<sc-if value="{{isHkd}}" hint-placeholder-val="{{true}}">
+<ul style="list-style: none; margin: 6px 0 0; padding: 0; border-top: 1px solid var(--rule);">
+<li style="display: flex; flex-direction: column; gap: 7px; padding: 11px 0 13px; border-bottom: 1px solid var(--rule);">
+<span style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px;"><span style="font-weight: 500;">Alex</span><strong style="font-size: 15px; font-weight: 700; color: var(--ai);">+HK$ 9,066.62</strong></span>
+<span aria-hidden="true" style="position: relative; display: block; height: 8px; border-radius: 4px; background: var(--sheet-2);"><span style="position: absolute; left: 50%; top: -3px; width: 1px; height: 14px; background: var(--field);"></span><span style="position: absolute; left: 50%; top: 0; width: 50%; height: 8px; border-radius: 0 4px 4px 0; background: var(--ai);"></span></span>
+</li>
+<li style="display: flex; flex-direction: column; gap: 7px; padding: 11px 0 13px; border-bottom: 1px solid var(--rule);">
+<span style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px;"><span style="font-weight: 700;">You</span><strong style="font-size: 15px; font-weight: 700; color: var(--shu-ink);">−HK$ 2,630.54</strong></span>
+<span aria-hidden="true" style="position: relative; display: block; height: 8px; border-radius: 4px; background: var(--sheet-2);"><span style="position: absolute; left: 50%; top: -3px; width: 1px; height: 14px; background: var(--field);"></span><span style="position: absolute; right: 50%; top: 0; width: 14.5%; height: 8px; border-radius: 4px 0 0 4px; background: var(--shu);"></span></span>
+</li>
+<li style="display: flex; flex-direction: column; gap: 7px; padding: 11px 0 13px; border-bottom: 1px solid var(--rule);">
+<span style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px;"><span style="font-weight: 500;">Jun</span><strong style="font-size: 15px; font-weight: 700; color: var(--shu-ink);">−HK$ 2,511.10</strong></span>
+<span aria-hidden="true" style="position: relative; display: block; height: 8px; border-radius: 4px; background: var(--sheet-2);"><span style="position: absolute; left: 50%; top: -3px; width: 1px; height: 14px; background: var(--field);"></span><span style="position: absolute; right: 50%; top: 0; width: 13.8%; height: 8px; border-radius: 4px 0 0 4px; background: var(--shu);"></span></span>
+</li>
+<li style="display: flex; flex-direction: column; gap: 7px; padding: 11px 0 13px; border-bottom: 1px solid var(--rule);">
+<span style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px;"><span style="display: flex; align-items: center; gap: 8px; font-weight: 500;">Sam<span style="padding: 0 6px; border-radius: 5px; border: 1px dashed var(--field); font-size: 11px; font-weight: 700; line-height: 1.6; color: var(--ink-2);">Placeholder</span></span><strong style="font-size: 15px; font-weight: 700; color: var(--shu-ink);">−HK$ 3,924.98</strong></span>
+<span aria-hidden="true" style="position: relative; display: block; height: 8px; border-radius: 4px; background: var(--sheet-2);"><span style="position: absolute; left: 50%; top: -3px; width: 1px; height: 14px; background: var(--field);"></span><span style="position: absolute; right: 50%; top: 0; width: 21.6%; height: 8px; border-radius: 4px 0 0 4px; background: var(--shu);"></span></span>
+</li>
+</ul>
+</sc-if>
+<sc-if value="{{isCur}}" hint-placeholder-val="{{false}}">
+<ul style="list-style: none; margin: 6px 0 0; padding: 0; border-top: 1px solid var(--rule);">
+<li style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--rule);"><span style="font-weight: 500;">Alex</span><span style="display: flex; flex-direction: column; align-items: flex-end;"><strong style="font-weight: 700; color: var(--ai);">+6,940.00 HKD</strong><strong style="font-weight: 700; color: var(--ai);">+40,430 JPY</strong></span></li>
+<li style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--rule);"><span style="font-weight: 700;">You</span><span style="display: flex; flex-direction: column; align-items: flex-end;"><strong style="font-weight: 700; color: var(--shu-ink);">−1,780.00 HKD</strong><strong style="font-weight: 700; color: var(--shu-ink);">−16,170 JPY</strong></span></li>
+<li style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--rule);"><span style="font-weight: 500;">Jun</span><span style="display: flex; flex-direction: column; align-items: flex-end;"><strong style="font-weight: 700; color: var(--shu-ink);">−2,580.00 HKD</strong><strong style="font-weight: 700; color: var(--ai);">+1,310 JPY</strong></span></li>
+<li style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--rule);"><span style="font-weight: 500;">Sam</span><span style="display: flex; flex-direction: column; align-items: flex-end;"><strong style="font-weight: 700; color: var(--shu-ink);">−2,580.00 HKD</strong><strong style="font-weight: 700; color: var(--shu-ink);">−25,570 JPY</strong></span></li>
+</ul>
+</sc-if>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 4px;">
+<h3 style="margin: 0 0 6px; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; color: var(--ink-3);">RECORDED REPAYMENTS</h3>
+<ul style="list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--rule);">
+<li style="display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--rule);">
+<span aria-hidden="true" style="width: 46px; height: 46px; flex-shrink: 0; box-sizing: border-box; border-radius: 50%; border: 1.5px solid var(--stamp); box-shadow: inset 0 0 0 2px var(--paper), inset 0 0 0 3px var(--stamp); display: flex; align-items: center; justify-content: center; color: var(--stamp); font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; transform: rotate(-12deg);">PAID</span>
+<span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0;"><span style="font-weight: 500;">Sam paid Alex 10,000 JPY</span><span style="font-size: 12.5px; color: var(--ink-3);">Paid as HK$ 526.00 · 11 Oct 22:41</span></span>
+</li>
+</ul>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 22px; padding: 20px 18px; background: var(--sheet); border: 1px solid var(--rule); border-radius: 14px; box-shadow: 0 1px 2px var(--shadow);">
+<div style="display: flex; flex-direction: column; gap: 2px;">
+<h3 style="margin: 0 0 6px; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; color: var(--ink-3);">TRIP STATS</h3>
+<span style="font-size: 13px; color: var(--ink-2);">Trip spending</span>
+<strong style="font-family: var(--mincho); font-size: 32px; font-weight: 600; line-height: 1.2;">HK$ 17,330.53</strong>
+<span style="font-size: 12.5px; color: var(--ink-3); text-wrap: pretty;">Excludes loans and personal expenses. Uses each expense’s locked rate.</span>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 10px;">
+<h4 style="margin: 0; font-size: 14px; font-weight: 700;">By category</h4>
+<ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 11px;">
+<li style="display: grid; grid-template-columns: minmax(0, 1fr) auto; row-gap: 5px; column-gap: 12px; align-items: center;"><span style="display: flex; align-items: center; gap: 8px; font-size: 14px;"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color: var(--ink-2);"><rect x="6" y="3.5" width="12" height="13" rx="3"></rect><path d="M6 10.5h12M9 13.8h.01M15 13.8h.01M8.5 16.5l-2 4M15.5 16.5l2 4"></path></svg>Transport</span><span style="font-size: 14px; font-weight: 700;">HK$ 10,165.93</span><span aria-hidden="true" style="grid-column: 1 / -1; display: flex; height: 6px; border-radius: 3px; background: var(--sheet-2);"><span style="width: 100%; border-radius: 3px; background: var(--ink-2);"></span></span></li>
+<li style="display: grid; grid-template-columns: minmax(0, 1fr) auto; row-gap: 5px; column-gap: 12px; align-items: center;"><span style="display: flex; align-items: center; gap: 8px; font-size: 14px;"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color: var(--ink-2);"><path d="M3.5 6v13.5M3.5 15.5h17v4M20.5 15.5v-3a3 3 0 0 0-3-3H10v6"></path><circle cx="6.8" cy="12.3" r="1.8"></circle></svg>Accommodation</span><span style="font-size: 14px; font-weight: 700;">HK$ 3,366.40</span><span aria-hidden="true" style="grid-column: 1 / -1; display: flex; height: 6px; border-radius: 3px; background: var(--sheet-2);"><span style="width: 33.1%; border-radius: 3px; background: var(--ink-2);"></span></span></li>
+<li style="display: grid; grid-template-columns: minmax(0, 1fr) auto; row-gap: 5px; column-gap: 12px; align-items: center;"><span style="display: flex; align-items: center; gap: 8px; font-size: 14px;"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color: var(--ink-2);"><path d="M3.5 12.5h17"></path><path d="M5 12.5a7 7 0 0 0 14 0"></path><path d="M9.5 20.5h5"></path><path d="M13.5 3.5l-3 9M18.5 4.5l-5.5 8"></path></svg>Food &amp; Drink</span><span style="font-size: 14px; font-weight: 700;">HK$ 2,766.76</span><span aria-hidden="true" style="grid-column: 1 / -1; display: flex; height: 6px; border-radius: 3px; background: var(--sheet-2);"><span style="width: 27.2%; border-radius: 3px; background: var(--ink-2);"></span></span></li>
+<li style="display: grid; grid-template-columns: minmax(0, 1fr) auto; row-gap: 5px; column-gap: 12px; align-items: center;"><span style="display: flex; align-items: center; gap: 8px; font-size: 14px;"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color: var(--ink-2);"><path d="M4 8a1.5 1.5 0 0 1 1.5-1.5h13A1.5 1.5 0 0 1 20 8v2.2a1.8 1.8 0 0 0 0 3.6V16a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 16v-2.2a1.8 1.8 0 0 0 0-3.6z"></path><path d="M14.5 6.5v2M14.5 11v2M14.5 15.5v2"></path></svg>Activities &amp; Tickets</span><span style="font-size: 14px; font-weight: 700;">HK$ 800.00</span><span aria-hidden="true" style="grid-column: 1 / -1; display: flex; height: 6px; border-radius: 3px; background: var(--sheet-2);"><span style="width: 7.9%; border-radius: 3px; background: var(--ink-2);"></span></span></li>
+<li style="display: grid; grid-template-columns: minmax(0, 1fr) auto; row-gap: 5px; column-gap: 12px; align-items: center;"><span style="display: flex; align-items: center; gap: 8px; font-size: 14px;"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color: var(--ink-2);"><path d="M4 7.5l8-4 8 4v9l-8 4-8-4z"></path><path d="M4 7.5l8 4 8-4M12 11.5v9"></path></svg>Other</span><span style="font-size: 14px; font-weight: 700;">HK$ 231.44</span><span aria-hidden="true" style="grid-column: 1 / -1; display: flex; height: 6px; border-radius: 3px; background: var(--sheet-2);"><span style="width: 2.3%; border-radius: 3px; background: var(--ink-2);"></span></span></li>
+</ul>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 10px;">
+<h4 style="margin: 0; font-size: 14px; font-weight: 700;">By day <span style="font-weight: 400; color: var(--ink-3);">· HK$</span></h4>
+<ol style="list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; align-items: end;">
+<li style="display: flex; flex-direction: column; align-items: center; gap: 5px;"><span style="font-size: 11.5px; font-weight: 700;">9,520</span><span aria-hidden="true" style="width: 100%; height: 96px; display: flex; align-items: flex-end; border-bottom: 1px solid var(--field);"><span style="width: 100%; height: 96px; border-radius: 4px 4px 0 0; background: var(--ink-2);"></span></span><span style="font-size: 12px; color: var(--ink-2);">Pre</span></li>
+<li style="display: flex; flex-direction: column; align-items: center; gap: 5px;"><span style="font-size: 11.5px; font-weight: 700;">5,022</span><span aria-hidden="true" style="width: 100%; height: 96px; display: flex; align-items: flex-end; border-bottom: 1px solid var(--field);"><span style="width: 100%; height: 51px; border-radius: 4px 4px 0 0; background: var(--ink-2);"></span></span><span style="font-size: 12px; color: var(--ink-2);">10</span></li>
+<li style="display: flex; flex-direction: column; align-items: center; gap: 5px;"><span style="font-size: 11.5px; font-weight: 700;">2,788</span><span aria-hidden="true" style="width: 100%; height: 96px; display: flex; align-items: flex-end; border-bottom: 1px solid var(--field);"><span style="width: 100%; height: 28px; border-radius: 4px 4px 0 0; background: var(--shu);"></span></span><span style="font-size: 12px; font-weight: 700; color: var(--ink);">11</span></li>
+<li style="display: flex; flex-direction: column; align-items: center; gap: 5px;"><span style="font-size: 11.5px; color: var(--ink-3);">0</span><span aria-hidden="true" style="width: 100%; height: 96px; display: flex; align-items: flex-end; border-bottom: 1px solid var(--field);"></span><span style="font-size: 12px; color: var(--ink-2);">12</span></li>
+<li style="display: flex; flex-direction: column; align-items: center; gap: 5px;"><span style="font-size: 11.5px; color: var(--ink-3);">0</span><span aria-hidden="true" style="width: 100%; height: 96px; display: flex; align-items: flex-end; border-bottom: 1px solid var(--field);"></span><span style="font-size: 12px; color: var(--ink-2);">13</span></li>
+<li style="display: flex; flex-direction: column; align-items: center; gap: 5px;"><span style="font-size: 11.5px; color: var(--ink-3);">0</span><span aria-hidden="true" style="width: 100%; height: 96px; display: flex; align-items: flex-end; border-bottom: 1px solid var(--field);"></span><span style="font-size: 12px; color: var(--ink-2);">Post</span></li>
+</ol>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<h4 style="margin: 0 0 2px; font-size: 14px; font-weight: 700;">By currency</h4>
+<ul style="list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--rule);">
+<li style="display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--rule); font-size: 14px;"><span>10,320.00 HKD</span><span style="color: var(--ink-3);">HK$ 10,320.00</span></li>
+<li style="display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--rule); font-size: 14px;"><span>133,280 JPY</span><span style="color: var(--ink-3);">HK$ 7,010.53</span></li>
+</ul>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<h4 style="margin: 0 0 2px; font-size: 14px; font-weight: 700;">Per person <span style="font-weight: 400; color: var(--ink-3);">· HK$</span></h4>
+<table style="width: 100%; border-collapse: collapse; font-size: 13.5px;">
+<thead>
+<tr><th scope="col" style="padding: 6px 0; text-align: left; font-size: 12px; font-weight: 700; color: var(--ink-3); border-bottom: 1px solid var(--rule-2);">Member</th><th scope="col" style="padding: 6px 0; text-align: right; font-size: 12px; font-weight: 700; color: var(--ink-3); border-bottom: 1px solid var(--rule-2);">Paid</th><th scope="col" style="padding: 6px 0; text-align: right; font-size: 12px; font-weight: 700; color: var(--ink-3); border-bottom: 1px solid var(--rule-2);">Share</th><th scope="col" style="padding: 6px 0; text-align: right; font-size: 12px; font-weight: 700; color: var(--ink-3); border-bottom: 1px solid var(--rule-2);">Personal</th></tr>
+</thead>
+<tbody>
+<tr><th scope="row" style="padding: 9px 0; text-align: left; font-weight: 500; border-bottom: 1px solid var(--rule);">Alex</th><td style="padding: 9px 0; text-align: right; border-bottom: 1px solid var(--rule);">14,064.64</td><td style="padding: 9px 0; text-align: right; border-bottom: 1px solid var(--rule);">4,472.02</td><td style="padding: 9px 0; text-align: right; border-bottom: 1px solid var(--rule);">4,472.02</td></tr>
+<tr><th scope="row" style="padding: 9px 0; text-align: left; font-weight: 700; border-bottom: 1px solid var(--rule);">You</th><td style="padding: 9px 0; text-align: right; border-bottom: 1px solid var(--rule);">1,809.92</td><td style="padding: 9px 0; text-align: right; border-bottom: 1px solid var(--rule);">4,440.46</td><td style="padding: 9px 0; text-align: right; border-bottom: 1px solid var(--rule);">4,545.66</td></tr>
+<tr><th scope="row" style="padding: 9px 0; text-align: left; font-weight: 500; border-bottom: 1px solid var(--rule);">Jun</th><td style="padding: 9px 0; text-align: right; border-bottom: 1px solid var(--rule);">1,981.97</td><td style="padding: 9px 0; text-align: right; border-bottom: 1px solid var(--rule);">4,493.06</td><td style="padding: 9px 0; text-align: right; border-bottom: 1px solid var(--rule);">4,493.06</td></tr>
+<tr><th scope="row" style="padding: 9px 0; text-align: left; font-weight: 500; border-bottom: 1px solid var(--rule);">Sam</th><td style="padding: 9px 0; text-align: right; border-bottom: 1px solid var(--rule);">0.00</td><td style="padding: 9px 0; text-align: right; border-bottom: 1px solid var(--rule);">4,450.98</td><td style="padding: 9px 0; text-align: right; border-bottom: 1px solid var(--rule);">3,924.98</td></tr>
+</tbody>
+</table>
+<p style="margin: 4px 0 0; font-size: 12.5px; color: var(--ink-3); text-wrap: pretty;">Paid and share include loans, at locked rates. Personal = your shares plus personal expenses, without loans.</p>
+</div>
+</section>
+
+</main>
+
+<svg aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; z-index: 60;"><filter id="washi" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="4" stitchTiles="stitch" result="noise"></feTurbulence><feColorMatrix in="noise" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.4 1.45" result="speck"></feColorMatrix><feFlood style="flood-color: var(--grain);" result="tint"></feFlood><feComposite in="tint" in2="speck" operator="in"></feComposite></filter><rect width="100%" height="100%" filter="url(#washi)"></rect></svg>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":390,"height":2400}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const dark = this.props.dark ?? false;
+    const s = dark ? '-Dark' : '';
+    const view = this.state.view ?? 'hkd';
+    const on = { bg: 'var(--sheet)', fg: 'var(--ink)', sh: '0 1px 2px var(--shadow)', w: '700' };
+    const off = { bg: 'transparent', fg: 'var(--ink-2)', sh: 'none', w: '500' };
+    return {
+      scheme: dark ? 'dark' : 'light',
+      isHkd: view === 'hkd',
+      isCur: view === 'currency',
+      segHkd: view === 'hkd' ? on : off,
+      segCur: view === 'currency' ? on : off,
+      showHkd: () => this.setState({ view: 'hkd' }),
+      showCur: () => this.setState({ view: 'currency' }),
+      nav: {
+        trips: 'MyTrips' + s + '.dc.html',
+        overview: 'Overview' + s + '.dc.html',
+        day: 'Day' + s + '.dc.html',
+        settle: 'SettleUp' + s + '.dc.html',
+        menu: 'TripMenu' + s + '.dc.html',
+        markpaid: 'MarkPaid' + s + '.dc.html',
+        markpaidjpy: 'MarkPaidJPY' + s + '.dc.html'
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

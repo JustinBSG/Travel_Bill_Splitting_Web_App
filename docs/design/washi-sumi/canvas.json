@@ -1,0 +1,375 @@
+{
+ "v": 3,
+ "createdOnFiles": {
+  "v": 1,
+  "at": "2026-09-24T08:01:43Z"
+ },
+ "title": "Travel Bill Split Redesign",
+ "launch": {
+  "view": "canvas"
+ },
+ "pages": [],
+ "boards": {
+  "Main.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 1320,
+   "h": 1720,
+   "title": "Foundations · Washi & Sumi"
+  },
+  "Overview.dc.html": {
+   "x": 0,
+   "y": 2140,
+   "w": 390,
+   "h": 1360,
+   "title": "Overview",
+   "is_interactive": true
+  },
+  "Day.dc.html": {
+   "x": 470,
+   "y": 2140,
+   "w": 390,
+   "h": 1420,
+   "title": "Day page · Day 2",
+   "is_interactive": true
+  },
+  "AddExpense.dc.html": {
+   "x": 940,
+   "y": 2140,
+   "w": 390,
+   "h": 1560,
+   "title": "Add expense · AA",
+   "is_interactive": true
+  },
+  "ExactSplit.dc.html": {
+   "x": 1410,
+   "y": 2140,
+   "w": 390,
+   "h": 1560,
+   "title": "Add expense · AB exact",
+   "is_interactive": true
+  },
+  "SettleUp.dc.html": {
+   "x": 1880,
+   "y": 2140,
+   "w": 390,
+   "h": 2400,
+   "title": "Settle up",
+   "is_interactive": true
+  },
+  "MarkPaid.dc.html": {
+   "x": 2350,
+   "y": 2140,
+   "w": 390,
+   "h": 844,
+   "title": "Mark as paid · HKD",
+   "is_interactive": true
+  },
+  "MarkPaidJPY.dc.html": {
+   "x": 2820,
+   "y": 2140,
+   "w": 390,
+   "h": 844,
+   "title": "Mark as paid · JPY",
+   "is_interactive": true
+  },
+  "TripMenu.dc.html": {
+   "x": 3290,
+   "y": 2140,
+   "w": 390,
+   "h": 844,
+   "title": "Trip menu",
+   "is_interactive": true
+  },
+  "Overview-Dark.dc.html": {
+   "x": 0,
+   "y": 4960,
+   "w": 390,
+   "h": 1360,
+   "title": "Overview · dark",
+   "is_interactive": true
+  },
+  "Day-Dark.dc.html": {
+   "x": 470,
+   "y": 4960,
+   "w": 390,
+   "h": 1420,
+   "title": "Day page · Day 2 · dark",
+   "is_interactive": true
+  },
+  "AddExpense-Dark.dc.html": {
+   "x": 940,
+   "y": 4960,
+   "w": 390,
+   "h": 1560,
+   "title": "Add expense · AA · dark",
+   "is_interactive": true
+  },
+  "ExactSplit-Dark.dc.html": {
+   "x": 1410,
+   "y": 4960,
+   "w": 390,
+   "h": 1560,
+   "title": "Add expense · AB exact · dark",
+   "is_interactive": true
+  },
+  "SettleUp-Dark.dc.html": {
+   "x": 1880,
+   "y": 4960,
+   "w": 390,
+   "h": 2400,
+   "title": "Settle up · dark",
+   "is_interactive": true
+  },
+  "MarkPaid-Dark.dc.html": {
+   "x": 2350,
+   "y": 4960,
+   "w": 390,
+   "h": 844,
+   "title": "Mark as paid · HKD · dark",
+   "is_interactive": true
+  },
+  "MarkPaidJPY-Dark.dc.html": {
+   "x": 2820,
+   "y": 4960,
+   "w": 390,
+   "h": 844,
+   "title": "Mark as paid · JPY · dark",
+   "is_interactive": true
+  },
+  "TripMenu-Dark.dc.html": {
+   "x": 3290,
+   "y": 4960,
+   "w": 390,
+   "h": 844,
+   "title": "Trip menu · dark",
+   "is_interactive": true
+  },
+  "Login.dc.html": {
+   "x": 0,
+   "y": 7780,
+   "w": 390,
+   "h": 844,
+   "title": "Sign in",
+   "is_interactive": true
+  },
+  "LoginCode.dc.html": {
+   "x": 470,
+   "y": 7780,
+   "w": 390,
+   "h": 844,
+   "title": "Email code",
+   "is_interactive": true
+  },
+  "MyTrips.dc.html": {
+   "x": 940,
+   "y": 7780,
+   "w": 390,
+   "h": 844,
+   "title": "My trips",
+   "is_interactive": true
+  },
+  "CreateTrip.dc.html": {
+   "x": 1410,
+   "y": 7780,
+   "w": 390,
+   "h": 1240,
+   "title": "Create trip",
+   "is_interactive": true
+  },
+  "Join.dc.html": {
+   "x": 1880,
+   "y": 7780,
+   "w": 390,
+   "h": 844,
+   "title": "Join trip",
+   "is_interactive": true
+  },
+  "Login-Dark.dc.html": {
+   "x": 0,
+   "y": 9440,
+   "w": 390,
+   "h": 844,
+   "title": "Sign in · dark",
+   "is_interactive": true
+  },
+  "LoginCode-Dark.dc.html": {
+   "x": 470,
+   "y": 9440,
+   "w": 390,
+   "h": 844,
+   "title": "Email code · dark",
+   "is_interactive": true
+  },
+  "MyTrips-Dark.dc.html": {
+   "x": 940,
+   "y": 9440,
+   "w": 390,
+   "h": 844,
+   "title": "My trips · dark",
+   "is_interactive": true
+  },
+  "CreateTrip-Dark.dc.html": {
+   "x": 1410,
+   "y": 9440,
+   "w": 390,
+   "h": 1240,
+   "title": "Create trip · dark",
+   "is_interactive": true
+  },
+  "Join-Dark.dc.html": {
+   "x": 1880,
+   "y": 9440,
+   "w": 390,
+   "h": 844,
+   "title": "Join trip · dark",
+   "is_interactive": true
+  },
+  "Members.dc.html": {
+   "x": 0,
+   "y": 11100,
+   "w": 390,
+   "h": 960,
+   "title": "Members",
+   "is_interactive": true
+  },
+  "Activity.dc.html": {
+   "x": 470,
+   "y": 11100,
+   "w": 390,
+   "h": 1120,
+   "title": "Activity log",
+   "is_interactive": true
+  },
+  "Settings.dc.html": {
+   "x": 940,
+   "y": 11100,
+   "w": 390,
+   "h": 1300,
+   "title": "Settings",
+   "is_interactive": true
+  },
+  "DayZh.dc.html": {
+   "x": 1410,
+   "y": 11100,
+   "w": 390,
+   "h": 1420,
+   "title": "Day page · 繁體中文",
+   "is_interactive": true
+  },
+  "Members-Dark.dc.html": {
+   "x": 0,
+   "y": 12940,
+   "w": 390,
+   "h": 960,
+   "title": "Members · dark",
+   "is_interactive": true
+  },
+  "Activity-Dark.dc.html": {
+   "x": 470,
+   "y": 12940,
+   "w": 390,
+   "h": 1120,
+   "title": "Activity log · dark",
+   "is_interactive": true
+  },
+  "Settings-Dark.dc.html": {
+   "x": 940,
+   "y": 12940,
+   "w": 390,
+   "h": 1300,
+   "title": "Settings · dark",
+   "is_interactive": true
+  },
+  "DayZh-Dark.dc.html": {
+   "x": 1410,
+   "y": 12940,
+   "w": 390,
+   "h": 1420,
+   "title": "Day page · 繁體中文 · dark",
+   "is_interactive": true
+  }
+ },
+ "order": [
+  "Main.dc.html",
+  "Overview.dc.html",
+  "Day.dc.html",
+  "AddExpense.dc.html",
+  "ExactSplit.dc.html",
+  "SettleUp.dc.html",
+  "MarkPaid.dc.html",
+  "MarkPaidJPY.dc.html",
+  "TripMenu.dc.html",
+  "Overview-Dark.dc.html",
+  "Day-Dark.dc.html",
+  "AddExpense-Dark.dc.html",
+  "ExactSplit-Dark.dc.html",
+  "SettleUp-Dark.dc.html",
+  "MarkPaid-Dark.dc.html",
+  "MarkPaidJPY-Dark.dc.html",
+  "TripMenu-Dark.dc.html",
+  "Login.dc.html",
+  "LoginCode.dc.html",
+  "MyTrips.dc.html",
+  "CreateTrip.dc.html",
+  "Join.dc.html",
+  "Login-Dark.dc.html",
+  "LoginCode-Dark.dc.html",
+  "MyTrips-Dark.dc.html",
+  "CreateTrip-Dark.dc.html",
+  "Join-Dark.dc.html",
+  "Members.dc.html",
+  "Activity.dc.html",
+  "Settings.dc.html",
+  "DayZh.dc.html",
+  "Members-Dark.dc.html",
+  "Activity-Dark.dc.html",
+  "Settings-Dark.dc.html",
+  "DayZh-Dark.dc.html"
+ ],
+ "notes": {
+  "inside-light": {
+   "x": 0,
+   "y": 1840,
+   "text": "Inside a trip · light",
+   "kind": "title1",
+   "maxW": 3680
+  },
+  "inside-dark": {
+   "x": 0,
+   "y": 4660,
+   "text": "Inside a trip · dark",
+   "kind": "title1",
+   "maxW": 3680
+  },
+  "getting-light": {
+   "x": 0,
+   "y": 7480,
+   "text": "Getting in · light",
+   "kind": "title1",
+   "maxW": 2270
+  },
+  "getting-dark": {
+   "x": 0,
+   "y": 9140,
+   "text": "Getting in · dark",
+   "kind": "title1",
+   "maxW": 2270
+  },
+  "more-light": {
+   "x": 0,
+   "y": 10800,
+   "text": "More screens · light",
+   "kind": "title1",
+   "maxW": 1800
+  },
+  "more-dark": {
+   "x": 0,
+   "y": 12640,
+   "text": "More screens · dark",
+   "kind": "title1",
+   "maxW": 1800
+  }
+ },
+ "designSystems": []
+}
