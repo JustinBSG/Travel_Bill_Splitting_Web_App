@@ -108,17 +108,25 @@ export function describeActivity(row: ActivityLogRow, ctx: Ctx): ActivityLine {
     case 'trip_member':
     case 'trip_members': {
       const who = s(a.display_name) || s(b.display_name)
+      // backend actions: create (placeholder) | join | claim | remove | leave | role_change | update
+      if (action === 'join') return plain(t('activity.memberJoined', { name: who }))
       if (action === 'create' || action === 'insert') {
         return plain(a.user_id ? t('activity.memberJoined', { name: who }) : t('activity.placeholderAdded', { actor, name: who }))
       }
-      if (action === 'claim' || (!b.user_id && a.user_id)) return plain(t('activity.placeholderClaimed', { name: who }))
-      if (!b.removed_at && a.removed_at) return plain(t('activity.memberRemoved', { actor, name: who }))
+      if (action === 'claim' || (row.before && !b.user_id && a.user_id)) return plain(t('activity.placeholderClaimed', { name: who }))
+      if (action === 'leave') return plain(t('activity.memberLeft', { name: who }))
+      if (action === 'remove' || (!b.removed_at && a.removed_at)) return plain(t('activity.memberRemoved', { actor, name: who }))
       if (changed(b, a, 'role')) return plain(t('activity.roleChanged', { actor, name: who, role: t(`members.roles.${s(a.role) || 'member'}` as 'members.roles.member') }))
       return plain(t('activity.memberUpdated', { actor, name: who }))
     }
 
     case 'trip':
     case 'trips': {
+      // backend actions: create | update | lock | unlock (create / update carry trip settings + days)
+      if (action === 'create' || action === 'insert') return plain(t('activity.tripCreated', { actor }))
+      if (action === 'lock') return plain(t('activity.locked', { actor }))
+      if (action === 'unlock') return plain(t('activity.unlocked', { actor }))
+      if (action === 'invite_regen' || action === 'regenerate_invite') return plain(t('activity.inviteRegenerated', { actor }))
       if (changed(b, a, 'is_locked')) return plain(a.is_locked ? t('activity.locked', { actor }) : t('activity.unlocked', { actor }))
       if (changed(b, a, 'start_date') || changed(b, a, 'end_date')) {
         return plain(
@@ -133,16 +141,25 @@ export function describeActivity(row: ActivityLogRow, ctx: Ctx): ActivityLine {
       if (changed(b, a, 'joining_enabled')) {
         return plain(a.joining_enabled ? t('activity.joiningOn', { actor }) : t('activity.joiningOff', { actor }))
       }
-      if (changed(b, a, 'invite_code') || changed(b, a, 'invite_token') || action === 'regenerate_invite') {
-        return plain(t('activity.inviteRegenerated', { actor }))
+      if (changed(b, a, 'days')) {
+        const days = (a.days ?? []) as Array<Record<string, unknown>>
+        const before = new Map(((b.days ?? []) as Array<Record<string, unknown>>).map((d) => [s(d.date), JSON.stringify(d)]))
+        const edited = days.filter((d) => before.get(s(d.date)) !== JSON.stringify(d))
+        if (edited.length === 1) {
+          return plain(t('activity.locationsChanged', { actor, date: formatDayMonth(s(edited[0].date), locale) }))
+        }
       }
-      if (action === 'create' || action === 'insert') return plain(t('activity.tripCreated', { actor }))
       return plain(t('activity.tripUpdated', { actor }))
     }
 
+    // Invite rotation is logged without the secrets (before / after are null).
+    case 'trip_invite':
+    case 'trip_invites':
+      return plain(t('activity.inviteRegenerated', { actor }))
+
     case 'trip_day':
     case 'trip_days':
-      return plain(t('activity.locationsChanged', { actor, date: s(a.date || b.date) }))
+      return plain(t('activity.locationsChanged', { actor, date: formatDayMonth(s(a.date || b.date), locale) }))
 
     default:
       return plain(t('activity.generic', { actor, action: row.action, entity: row.entity_type }))

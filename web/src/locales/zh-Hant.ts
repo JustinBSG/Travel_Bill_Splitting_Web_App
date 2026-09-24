@@ -26,6 +26,18 @@ const zhHant: LocaleShape<typeof en> = {
     notFound: '找不到頁面',
     goHome: '返回我的旅程',
   },
+  apiErrors: {
+    unauthenticated: '登入已過期，請重新登入。',
+    forbidden: '你沒有權限進行此操作。',
+    not_found: '此項目已不存在。',
+    trip_locked: '此旅程已鎖定，需由管理員先解鎖。',
+    joining_disabled: '此旅程已關閉加入功能。請聯絡管理員。',
+    conflict_updated_at: '有人在你編輯期間修改了此項目。請載入最新版本後再試。',
+    share_sum_mismatch: '每人金額加起來必須等於總額。',
+    fx_rate_missing: '暫時未有此貨幣的匯率。請稍後再試或改用其他貨幣。',
+    invite_invalid: '此邀請連結或代碼無效（可能已被更換）。',
+    rate_limited: '嘗試次數過多，請稍候一分鐘再試。',
+  },
   config: {
     title: '需要設定',
     body: '請在 web/.env.local 設定 VITE_SUPABASE_URL 及 VITE_SUPABASE_ANON_KEY，然後重新啟動開發伺服器。',
@@ -125,6 +137,7 @@ const zhHant: LocaleShape<typeof en> = {
     invalid: '此邀請連結或代碼無效（可能已被更換）。',
     disabled: '此旅程已關閉加入功能，請聯絡管理員。',
     rateLimited: '嘗試次數過多，請稍候一分鐘再試。',
+    locked: '此旅程已鎖定，暫時不能加入。請聯絡管理員。',
   },
   pages: {
     overview: '概覽',
@@ -384,6 +397,7 @@ const zhHant: LocaleShape<typeof en> = {
     placeholderAdded: '{{actor}} 新增了 {{name}}（預留成員）',
     placeholderClaimed: '{{name}} 已由其帳戶認領',
     memberRemoved: '{{actor}} 移除了 {{name}}',
+    memberLeft: '{{name}} 離開了旅程',
     roleChanged: '{{actor}} 將 {{name}} 設為{{role}}',
     memberUpdated: '{{actor}} 更新了 {{name}}',
     locked: '{{actor}} 鎖定了旅程',
@@ -424,6 +438,7 @@ const zhHant: LocaleShape<typeof en> = {
     deleteConfirm: '這會為所有人永久刪除「{{name}}」。請輸入旅程名稱以確認。',
     typeName: '旅程名稱',
     deleted: '已刪除旅程',
+    unlockToDelete: '請先解鎖旅程才可刪除。',
   },
   notifications: {
     title: '通知',

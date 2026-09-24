@@ -23,6 +23,19 @@ const en = {
     notFound: 'Page not found',
     goHome: 'Go to My Trips',
   },
+  // Messages for backend error codes (lib/supabase.ts).
+  apiErrors: {
+    unauthenticated: 'Your session has ended. Please sign in again.',
+    forbidden: 'You don’t have permission to do that.',
+    not_found: 'This item no longer exists.',
+    trip_locked: 'This trip is locked. An admin has to unlock it first.',
+    joining_disabled: 'Joining is turned off for this trip. Ask an admin.',
+    conflict_updated_at: 'Someone else changed this while you were editing. Load the latest version and try again.',
+    share_sum_mismatch: 'The amounts per person must add up exactly to the total.',
+    fx_rate_missing: 'No exchange rate is available for this currency yet. Try again later or use another currency.',
+    invite_invalid: 'This invite link or code is not valid (it may have been replaced).',
+    rate_limited: 'Too many attempts. Please wait a minute and try again.',
+  },
   config: {
     title: 'Setup needed',
     body: 'Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in web/.env.local, then restart the dev server.',
@@ -122,6 +135,7 @@ const en = {
     invalid: 'This invite link or code is not valid (it may have been replaced).',
     disabled: 'Joining is turned off for this trip. Ask an admin.',
     rateLimited: 'Too many attempts. Please wait a minute and try again.',
+    locked: 'This trip is locked, so nobody new can join right now. Ask an admin.',
   },
   pages: {
     overview: 'Overview',
@@ -381,6 +395,7 @@ const en = {
     placeholderAdded: '{{actor}} added {{name}} (placeholder)',
     placeholderClaimed: '{{name}} was claimed by their account',
     memberRemoved: '{{actor}} removed {{name}}',
+    memberLeft: '{{name}} left the trip',
     roleChanged: '{{actor}} made {{name}} {{role}}',
     memberUpdated: '{{actor}} updated {{name}}',
     locked: '{{actor}} locked the trip',
@@ -421,6 +436,7 @@ const en = {
     deleteConfirm: 'This permanently deletes “{{name}}” for everyone. Type the trip name to confirm.',
     typeName: 'Trip name',
     deleted: 'Trip deleted',
+    unlockToDelete: 'Unlock the trip before deleting it.',
   },
   notifications: {
     title: 'Notifications',

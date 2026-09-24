@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router'
 import { ErrorBox, PageHeader } from '../../app/ui/common'
 import { eachDate, isISODate } from '../../lib/dates'
 import type { ISODate } from '../../lib/types'
-import { useAuth, useUser } from '../auth/AuthContext'
 import { DayLocationsEditor } from './DayLocationsEditor'
 import { createTrip, type DayLocation } from './tripApi'
 import { MAX_TRIP_DAYS, durationText, tripDatesError } from './tripText'
@@ -12,8 +11,6 @@ import { MAX_TRIP_DAYS, durationText, tripDatesError } from './tripText'
 export function CreateTripPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const user = useUser()
-  const { profile } = useAuth()
   const [name, setName] = useState('')
   const [start, setStart] = useState('')
   const [end, setEnd] = useState('')
@@ -33,10 +30,7 @@ export function CreateTripPage() {
     setBusy(true)
     setError(null)
     try {
-      const id = await createTrip(
-        { name: name.trim(), start_date: start, end_date: end, dates, days },
-        { id: user.id, displayName: profile?.display_name ?? '' },
-      )
+      const id = await createTrip({ name: name.trim(), start_date: start, end_date: end, dates, days })
       navigate(`/trips/${id}/overview`, { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))

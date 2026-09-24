@@ -9,7 +9,7 @@ import { eachDate, isISODate } from '../../lib/dates'
 import type { ISODate } from '../../lib/types'
 import { DayLocationsEditor } from './DayLocationsEditor'
 import { useTripData } from './TripDataContext'
-import { deleteTrip, regenerateInvite, saveTripSettings, setTripFlags, type DayLocation } from './tripApi'
+import { deleteTrip, regenerateInvite, saveTripSettings, setJoiningEnabled, setTripLocked, type DayLocation } from './tripApi'
 import { MAX_TRIP_DAYS, tripDatesError } from './tripText'
 
 /** Admin only. Owner-only: delete trip (type the name to confirm). */
@@ -139,7 +139,7 @@ export function TripSettingsPage() {
                 void run(
                   'joining',
                   async () => {
-                    await setTripFlags(trip.id, { joining_enabled: e.target.checked })
+                    await setJoiningEnabled(trip.id, e.target.checked)
                     await reload(['trip'])
                   },
                   e.target.checked ? t('tripSettings.joiningOnDone') : t('tripSettings.joiningOffDone'),
@@ -166,7 +166,7 @@ export function TripSettingsPage() {
                 void run(
                   'lock',
                   async () => {
-                    await setTripFlags(trip.id, { is_locked: false })
+                    await setTripLocked(trip.id, false)
                     await reload(['trip'])
                   },
                   t('tripSettings.unlocked'),
@@ -185,9 +185,10 @@ export function TripSettingsPage() {
         {isOwner && (
           <section className="card stack danger-zone">
             <h2 className="section-title">{t('tripSettings.dangerZone')}</h2>
-            <button type="button" className="btn btn-danger" disabled={busy !== null} onClick={() => setConfirm('delete')}>
+            <button type="button" className="btn btn-danger" disabled={locked || busy !== null} onClick={() => setConfirm('delete')}>
               <Icon name="trash" size={18} /> {t('tripSettings.delete')}
             </button>
+            {locked && <p className="muted small">{t('tripSettings.unlockToDelete')}</p>}
           </section>
         )}
       </main>
@@ -242,7 +243,7 @@ export function TripSettingsPage() {
                   void run(
                     'lock',
                     async () => {
-                      await setTripFlags(trip.id, { is_locked: true })
+                      await setTripLocked(trip.id, true)
                       await reload(['trip'])
                     },
                     t('tripSettings.lockedDone'),

@@ -37,7 +37,8 @@ export function CitySearch({ label, onPick, disabled, autoFocus }: Props) {
       setStatus('loading')
       searchCities(q, i18n.language, ctrl.signal)
         .then((r) => {
-          setResults(r)
+          // A trip day needs a country (and so a currency); skip the rare result without one.
+          setResults(r.filter((x) => x.country_code))
           setStatus('idle')
         })
         .catch((e) => {

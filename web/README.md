@@ -96,48 +96,32 @@ src/
 - Soft delete only (`deleted_at`), with Undo toast and Restore from the Activity log.
 - Locked trip: all write controls hidden/disabled; admins can still unlock in Trip settings.
 
-## Backend contract assumptions / gaps (please confirm)
+## Backend contract
 
-The backend isn't in this repo yet, so the frontend codes against the brief and makes these
-assumptions. Each one is isolated in a single file so it's easy to adjust.
+The backend lives in [`../backend`](../backend/README.md) (Supabase: migrations, RLS, RPCs, Edge Functions).
+All calls are isolated in the `*Api.ts` files:
 
-1. **`join_trip` preview** (`features/trips/joinApi.ts`): to offer "Join as new member" vs "I am &lt;placeholder&gt;"
-   *before* joining, the UI calls `join_trip({ token | code, preview: true })` and expects
-   `{ trip: {id,name,start_date,end_date}, placeholders: [{id, display_name}], already_member, joining_enabled }`
-   **without joining**. The real join is `join_trip({ token | code, claim_placeholder_id? })` → `{ trip_id }`.
-   HTTP 404 = invalid code, 403 = joining disabled, 429 = rate limited.
-2. **Saving an expense isn't atomic** (`features/expenses/expenseApi.ts`): the UI inserts/updates `expenses`,
-   then writes `expense_participants`. A `save_expense` RPC would make this one transaction.
-   - AA (`split_method = 'equal'`): rows are inserted as `expense_id, member_id` (no `share_amount`);
-     a trigger computes shares, and must recompute when the amount or split method changes.
-   - AB (`split_method = 'exact'`): rows are upserted with `share_amount` (`on_conflict = expense_id,member_id`).
-     The backend must keep these values (not re-split) and should check they add up to `amount`.
-     The Conclusion page also flags any expense whose shares don't add up.
-   - AB is part of spec v1.1 (§5.8): the backend needs the `split_method` column (text, default `'equal'`).
-3. `created_by` columns are not sent; expected `DEFAULT auth.uid()`.
-4. **Trip creation** (`features/trips/tripApi.ts`): the client generates the trip id, inserts `trips` without
-   RETURNING, then inserts the creator's `owner` membership only if a trigger hasn't already created it.
-   RLS must allow that (or a trigger must do it).
-5. **Invite secrets**: admins read `trips.invite_token, invite_code`; if they move to a separate table,
-   change `fetchInvite`. Tokens are never logged.
-6. **FX semantics**: an `fx_rates` row means `1 base = rate quote`; any base works (rates are chained
-   through the table, e.g. base USD). `expenses.fx_rate_to_hkd` = HKD per 1 major unit.
-   `settlements.fx_rate` = paid_currency per 1 major unit of debt_currency (1 when the same).
-7. Money is sent as integer strings (e.g. `"15780"`), never floats. `local_date` is sent too (the trigger may overwrite it).
-8. Unique constraints the UI relies on: `trip_days (trip_id, date)`, `expense_participants (expense_id, member_id)`,
-   `notification_settings (user_id, type)`,
-   `settlements.idempotency_key`, `push_subscriptions.endpoint` (duplicates are ignored).
-9. **Notifications**: type strings `expense_added`, `expense_changed` (+ `expense_updated`/`expense_deleted`
-   accepted), `settlement_received`, `member_joined`, `placeholder_claimed`, `trip_locked`; payload fields
-   `actor_name`, `title`, `trip_name`, `amount_display` (all optional). See `features/notifications/notificationTypes.ts`.
-10. **Activity log**: `entity_type` in `expense|settlement|trip_member|trip|trip_day` (plural accepted),
-    `action` `create|update|delete|…`, `before`/`after` are row snapshots. Soft delete = update with `deleted_at` set.
-11. **Auth**: the Supabase email OTP template must contain `{{ .Token }}` (6-digit code) — not a magic link.
-    Add the site URL (with `/**`) to Auth redirect URLs for Google/Apple.
-12. **Storage**: private bucket `expense-photos`, object path `<trip_id>/<uuid>.jpg`; policies by trip membership on
-    the first path segment. The UI only uses signed URLs.
-13. **Web Push**: needs `VITE_VAPID_PUBLIC_KEY` (brief §1). `send_push` should send JSON
-    `{ title, body, url }`; `public/push-sw.js` shows it and opens `url` when tapped.
-14. **Realtime**: the publication should include `expenses, expense_participants, settlements, trip_members,
-    trips, trip_days, notifications`. `expense_participants` has no `trip_id`, so it is subscribed unfiltered
-    (RLS-limited) and matched against loaded expense ids.
+- **Trips** (`features/trips/tripApi.ts`): `rpc/create_trip` (trip + days + owner + invite in one transaction),
+  `rpc/update_trip`, `rpc/lock_trip` / `unlock_trip`, `rpc/delete_trip` (owner, unlocked), and
+  `rpc/get_trip_invite` for admins (invite secrets are not on `trips`). `joining_enabled` is a plain PATCH.
+- **Members**: placeholders are a plain insert; `rpc/set_member_role` and `rpc/remove_member` for admins.
+- **Join** (`features/trips/joinApi.ts`): Edge Function `join_trip` with `preview: true` (trip + open placeholders,
+  joins nothing), then `{ token | code, claim_placeholder_id? }`. Errors: `{ error: { code, message } }`.
+- **Expenses** (`features/expenses/expenseApi.ts`): `rpc/save_expense` writes the expense and its participants in
+  one transaction. The server derives `local_date`, locks FX, computes `amount_hkd`, splits AA shares and checks AB
+  sums. `expected_updated_at` is the `updated_at` string exactly as received (optimistic lock → `conflict_updated_at`).
+  Soft delete / restore: `rpc/soft_delete_expense`, `rpc/restore_expense`.
+- **Settlements**: plain insert with `idempotency_key` (a replay is a 409 `23505`, shown as "already recorded").
+- **Money** is sent as integer strings in minor units (e.g. `"15780"`), never floats.
+- **Errors**: backend codes (`trip_locked`, `forbidden`, `share_sum_mismatch`, …) are shown in the user's
+  language via `apiErrors.*` (`lib/supabase.ts`); `validation_error` keeps the server's message.
+- **Notifications**: types `expense_added`, `expense_updated`, `expense_deleted`, `settlement_received`,
+  `member_joined`, `placeholder_claimed`, `trip_locked`. Settings shows the spec's five events; one switch can
+  cover two types (see `features/notifications/notificationTypes.ts`). Push payload is `{ title, body, url }`.
+- **Activity log**: `entity_type` `trip | trip_day | trip_member | trip_invite | expense | settlement`; actions include
+  `create | update | delete | restore | join | claim | remove | leave | role_change | lock | unlock | invite_regen`.
+- **Storage**: private bucket `trip-photos`, path `{trip_id}/{expense_id}/{uuid}.jpg` (`{trip_id}/{uuid}.jpg` for a
+  new expense). Signed URLs only; a replaced photo is deleted after the expense saves.
+- **Realtime**: `expenses, expense_participants, settlements, trip_members, trips, trip_days, notifications`.
+  `expense_participants` has no `trip_id`, so it is subscribed unfiltered (RLS-limited) and matched against loaded
+  expense ids.

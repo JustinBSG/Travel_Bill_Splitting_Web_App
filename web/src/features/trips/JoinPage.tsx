@@ -28,6 +28,7 @@ export function JoinPage() {
       if (e instanceof JoinError) {
         if (e.kind === 'invalid') return t('join.invalid')
         if (e.kind === 'disabled') return t('join.disabled')
+        if (e.kind === 'locked') return t('join.locked')
         if (e.kind === 'rate_limited') return t('join.rateLimited')
       }
       return t('app.errorWith', { message: e instanceof Error ? e.message : String(e) })

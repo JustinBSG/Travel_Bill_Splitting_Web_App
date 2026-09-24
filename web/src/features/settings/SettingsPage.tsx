@@ -6,7 +6,7 @@ import { ErrorBox, PageHeader } from '../../app/ui/common'
 import { supabase } from '../../lib/supabase'
 import type { NotificationSetting } from '../../lib/types'
 import { useAuth, useUser } from '../auth/AuthContext'
-import { NOTIFICATION_TYPES, type NotificationType } from '../notifications/notificationTypes'
+import { NOTIFICATION_GROUPS, NOTIFICATION_TYPES, type NotificationGroup } from '../notifications/notificationTypes'
 import { currentPushSubscription, disablePush, enablePush, pushSupport } from '../notifications/push'
 import { LanguageSwitch } from './LanguageSwitch'
 import { PaletteSwitch } from './PaletteSwitch'
@@ -60,13 +60,21 @@ export function SettingsPage() {
     }
   }
 
-  async function togglePref(type: NotificationType, enabled: boolean) {
-    setPrefs((p) => ({ ...p, [type]: enabled }))
+  // A row is on unless one of its backend types is switched off (no row = on).
+  const groupOn = (group: NotificationGroup) => NOTIFICATION_GROUPS[group].every((type) => prefs[type] ?? true)
+
+  async function togglePref(group: NotificationGroup, enabled: boolean) {
+    const types = NOTIFICATION_GROUPS[group]
+    const set = (on: boolean) => setPrefs((p) => ({ ...p, ...Object.fromEntries(types.map((type) => [type, on])) }))
+    set(enabled)
     const { error } = await supabase
       .from('notification_settings')
-      .upsert({ user_id: user.id, type, enabled }, { onConflict: 'user_id,type' })
+      .upsert(
+        types.map((type) => ({ user_id: user.id, type, enabled })),
+        { onConflict: 'user_id,type' },
+      )
     if (error) {
-      setPrefs((p) => ({ ...p, [type]: !enabled }))
+      set(!enabled)
       setError(error.message)
     }
   }
@@ -138,7 +146,7 @@ export function SettingsPage() {
                 type="checkbox"
                 role="switch"
                 className="switch"
-                checked={prefs[type] ?? true}
+                checked={groupOn(type)}
                 onChange={(e) => void togglePref(type, e.target.checked)}
               />
             </label>

@@ -322,7 +322,7 @@ function ExpenseForm({ existing, originPage, onReloadLatest }: FormProps) {
     setError(null)
     try {
       let finalPhoto = photoPath
-      if (newPhoto) finalPhoto = await uploadPhoto(trip.id, newPhoto.blob)
+      if (newPhoto) finalPhoto = await uploadPhoto(trip.id, newPhoto.blob, existing?.id)
       const input: ExpenseInput = {
         title: title.trim(),
         category,
@@ -331,7 +331,6 @@ function ExpenseForm({ existing, originPage, onReloadLatest }: FormProps) {
         paid_by: paidBy,
         occurred_at: zonedToUtcIso(date, time, tz),
         timezone: tz,
-        local_date: date,
         end_date: multiDay ? endDate : null,
         location_text: locationText.trim() || null,
         latitude: coords.lat,

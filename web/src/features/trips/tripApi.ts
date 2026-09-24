@@ -2,7 +2,7 @@
 import { rateToHkd, type RateTable } from '../../lib/fx'
 import { ZERO, type Decimal } from '../../lib/money'
 import { computeNets, hkdNets, type NetExpense, type NetSettlement } from '../../lib/settlement'
-import { ApiError, functionErrorMessage, supabase, unwrap } from '../../lib/supabase'
+import { functionErrorMessage, rpc, supabase, unwrap } from '../../lib/supabase'
 import type {
   Expense,
   ISODate,
@@ -13,8 +13,8 @@ import type {
   TripMember,
 } from '../../lib/types'
 
-// Explicit column lists: invite_token / invite_code may be column-restricted
-// for non-admins, and `select *` would then fail for everyone.
+// Explicit column lists keep payloads small and stable. Invite secrets are not
+// on `trips` at all (backend table trip_invites, admin-only via get_trip_invite).
 export const TRIP_COLUMNS =
   'id, name, start_date, end_date, base_currency, home_timezone, joining_enabled, is_locked, created_by, created_at, updated_at'
 export const DAY_COLUMNS = 'trip_id, date, location_name, country_code, latitude, longitude, timezone, currency'
@@ -53,9 +53,9 @@ export async function fetchSettlements(tripId: string): Promise<Settlement[]> {
   ) as Settlement[]
 }
 
-/** Returns null when the backend withholds invite secrets from this user. */
+/** Admins only (POST /rpc/get_trip_invite); null for everyone else or on error. */
 export async function fetchInvite(tripId: string): Promise<TripInvite | null> {
-  const { data, error } = await supabase.from('trips').select('invite_token, invite_code').eq('id', tripId).maybeSingle()
+  const { data, error } = await supabase.rpc('get_trip_invite', { trip_id: tripId })
   if (error || !data) return null
   return data as TripInvite
 }
@@ -117,11 +117,10 @@ export interface DayLocation {
   currency: string
 }
 
-function dayRows(tripId: string, dates: ISODate[], days: Map<ISODate, DayLocation>) {
+function dayRows(dates: ISODate[], days: Map<ISODate, DayLocation>) {
   return dates.map((date) => {
     const d = days.get(date)!
     return {
-      trip_id: tripId,
       date,
       location_name: d.location_name,
       country_code: d.country_code,
@@ -133,61 +132,51 @@ function dayRows(tripId: string, dates: ISODate[], days: Map<ISODate, DayLocatio
   })
 }
 
+interface TripDetailsInput {
+  name: string
+  start_date: ISODate
+  end_date: ISODate
+  dates: ISODate[]
+  days: Map<ISODate, DayLocation>
+}
+
 /**
- * Creates the trip, makes the creator its owner (unless a backend trigger
- * already did) and stores one trip_days row per date.
+ * One transaction on the server: trip, one trip_days row per date, the caller
+ * as owner, and the invite. Returns the new trip id.
  */
-export async function createTrip(
-  input: { name: string; start_date: ISODate; end_date: ISODate; dates: ISODate[]; days: Map<ISODate, DayLocation> },
-  user: { id: string; displayName: string },
-): Promise<string> {
-  const id = crypto.randomUUID()
-  // No RETURNING: the SELECT policy needs membership, which may not exist yet.
-  unwrap(await supabase.from('trips').insert({ id, name: input.name, start_date: input.start_date, end_date: input.end_date }))
-
-  const existing = await supabase
-    .from('trip_members')
-    .select('id')
-    .eq('trip_id', id)
-    .eq('user_id', user.id)
-    .maybeSingle()
-  if (!existing.data) {
-    const res = await supabase
-      .from('trip_members')
-      .insert({ trip_id: id, user_id: user.id, display_name: user.displayName, role: 'owner' })
-    if (res.error && res.error.code !== '23505') throw new ApiError(res.error.message, res.error.code)
-  }
-
-  unwrap(await supabase.from('trip_days').upsert(dayRows(id, input.dates, input.days), { onConflict: 'trip_id,date' }))
-  return id
+export async function createTrip(input: TripDetailsInput): Promise<string> {
+  const trip = await rpc<{ id: string }>('create_trip', {
+    name: input.name,
+    start_date: input.start_date,
+    end_date: input.end_date,
+    days: dayRows(input.dates, input.days),
+  })
+  return trip.id
 }
 
-export async function saveTripSettings(
-  tripId: string,
-  input: { name: string; start_date: ISODate; end_date: ISODate; dates: ISODate[]; days: Map<ISODate, DayLocation> },
-): Promise<void> {
-  unwrap(
-    await supabase
-      .from('trips')
-      .update({ name: input.name, start_date: input.start_date, end_date: input.end_date })
-      .eq('id', tripId),
-  )
-  unwrap(await supabase.from('trip_days').upsert(dayRows(tripId, input.dates, input.days), { onConflict: 'trip_id,date' }))
-  unwrap(
-    await supabase
-      .from('trip_days')
-      .delete()
-      .eq('trip_id', tripId)
-      .or(`date.lt.${input.start_date},date.gt.${input.end_date}`),
-  )
+/** Admin. The server makes trip_days match the new range; expenses keep their dates and rates. */
+export async function saveTripSettings(tripId: string, input: TripDetailsInput): Promise<void> {
+  await rpc('update_trip', {
+    trip_id: tripId,
+    name: input.name,
+    start_date: input.start_date,
+    end_date: input.end_date,
+    days: dayRows(input.dates, input.days),
+  })
 }
 
-export async function setTripFlags(tripId: string, flags: Partial<Pick<Trip, 'joining_enabled' | 'is_locked'>>) {
-  unwrap(await supabase.from('trips').update(flags).eq('id', tripId))
+export async function setJoiningEnabled(tripId: string, enabled: boolean) {
+  unwrap(await supabase.from('trips').update({ joining_enabled: enabled }).eq('id', tripId))
 }
 
+/** Admin. Lock / unlock go through RPCs so the server can log and notify. */
+export async function setTripLocked(tripId: string, locked: boolean) {
+  await rpc(locked ? 'lock_trip' : 'unlock_trip', { trip_id: tripId })
+}
+
+/** Owner, trip unlocked. Also deletes the trip's photos. */
 export async function deleteTrip(tripId: string) {
-  unwrap(await supabase.from('trips').delete().eq('id', tripId))
+  await rpc('delete_trip', { trip_id: tripId })
 }
 
 export async function regenerateInvite(tripId: string): Promise<void> {
@@ -204,9 +193,10 @@ export async function addPlaceholder(tripId: string, displayName: string) {
 }
 
 export async function promoteToAdmin(memberId: string) {
-  unwrap(await supabase.from('trip_members').update({ role: 'admin' }).eq('id', memberId))
+  await rpc('set_member_role', { member_id: memberId, role: 'admin' })
 }
 
+/** Soft removal: their expenses and settlements stay; they show as "left the trip". */
 export async function removeMember(memberId: string) {
-  unwrap(await supabase.from('trip_members').update({ removed_at: new Date().toISOString() }).eq('id', memberId))
+  await rpc('remove_member', { member_id: memberId })
 }

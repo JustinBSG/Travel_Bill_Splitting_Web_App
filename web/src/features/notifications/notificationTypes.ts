@@ -2,18 +2,18 @@ import type { TFunction } from 'i18next'
 import type { NotificationRow } from '../../lib/types'
 
 /**
- * Notification event types (brief §3.11). The string values must match what
- * the backend writes to notifications.type / notification_settings.type.
- * GAP: confirm these names with the backend.
+ * Settings rows = the spec §5.18 events. Each row switches one or more backend
+ * notification types (notifications.type / notification_settings.type).
  */
-export const NOTIFICATION_TYPES = [
-  'expense_added',
-  'expense_changed',
-  'settlement_received',
-  'member_joined',
-  'trip_locked',
-] as const
-export type NotificationType = (typeof NOTIFICATION_TYPES)[number]
+export const NOTIFICATION_GROUPS = {
+  expense_added: ['expense_added'],
+  expense_changed: ['expense_updated', 'expense_deleted'],
+  settlement_received: ['settlement_received'],
+  member_joined: ['member_joined', 'placeholder_claimed'],
+  trip_locked: ['trip_locked'],
+} as const satisfies Record<string, readonly string[]>
+export type NotificationGroup = keyof typeof NOTIFICATION_GROUPS
+export const NOTIFICATION_TYPES = Object.keys(NOTIFICATION_GROUPS) as NotificationGroup[]
 
 function str(v: unknown): string {
   return typeof v === 'string' ? v : typeof v === 'number' ? String(v) : ''
@@ -32,7 +32,6 @@ export function describeNotification(n: NotificationRow, t: TFunction): string {
     case 'expense_added':
       return t('notifications.types.expense_added', vars)
     case 'expense_updated':
-    case 'expense_changed':
       return t('notifications.types.expense_changed', vars)
     case 'expense_deleted':
       return t('notifications.types.expense_deleted', vars)

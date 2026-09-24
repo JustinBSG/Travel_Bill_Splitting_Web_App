@@ -27,12 +27,15 @@ export function ProfileSetupPage() {
     }
     setBusy(true)
     setError(null)
-    const { error } = await supabase
+    // The row is created at signup by the backend; only name and language are writable.
+    const { data, error } = await supabase
       .from('profiles')
-      .upsert({ id: user.id, display_name: displayName, language: lang }, { onConflict: 'id' })
+      .update({ display_name: displayName, language: lang })
+      .eq('id', user.id)
+      .select('id')
     setBusy(false)
-    if (error) {
-      setError(error.message)
+    if (error || !data?.length) {
+      setError(error?.message ?? t('app.error'))
       return
     }
     setLanguage(lang)

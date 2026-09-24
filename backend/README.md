@@ -191,25 +191,7 @@ microseconds. Parsing it into a JS `Date` truncates to milliseconds and causes f
   queues one Storage API `DELETE` per object through pg_net, sent after commit. This needs the
   `service_role_key` Vault secret.
 
-## What `web/` must change to use this backend
+## Frontend
 
-The current frontend was written before this contract existed (its code comments say
-"GAP: confirm with backend"). These calls need updating:
-
-| web/ today | Use instead |
-|---|---|
-| `tripApi.createTrip`: insert into `trips`, `trip_members`, `trip_days` | `rpc('create_trip', {name,start_date,end_date,days})` (direct trip inserts aren't granted) |
-| `saveTripSettings`: update trips dates + upsert/delete days | `rpc('update_trip', …)` (dates are only writable here) |
-| `setTripFlags({is_locked})` | `rpc('lock_trip' / 'unlock_trip')`. `joining_enabled` can still be PATCHed |
-| `deleteTrip`: `delete from trips` | `rpc('delete_trip', {trip_id})` |
-| `fetchInvite`: selects `invite_token, invite_code` from `trips` | `rpc('get_trip_invite', {trip_id})` |
-| `promoteToAdmin` / `removeMember`: update `trip_members` | `rpc('set_member_role')` / `rpc('remove_member')` |
-| `expenseApi` create/update/`syncParticipants`/soft delete/restore | `rpc('save_expense')`, `rpc('soft_delete_expense')`, `rpc('restore_expense')` |
-| `PHOTO_BUCKET = 'expense-photos'` | `'trip-photos'`. The current `{trip_id}/{uuid}.jpg` paths are accepted |
-| Notification types `expense_changed` | `expense_updated` and `expense_deleted`. Also offer `placeholder_claimed` |
-| `functionErrorMessage` reads `body.error` as a string | `body.error.message` (`body.error.code` for branching) |
-| Activity: invite rotation | `entity_type 'trip_invite'`, `action 'invite_regen'`. Member removal: `remove` / `leave` |
-
-These already match and need no change: settlement inserts (a 409 on a replayed key is still
-handled), push subscribe/unsubscribe, notification reads, realtime subscriptions, `join_trip`
-preview/join bodies, and the push payload `{title, body, url}`.
+`web/` calls exactly this contract; its `*Api.ts` modules are summarised in
+[`web/README.md`](../web/README.md#backend-contract).

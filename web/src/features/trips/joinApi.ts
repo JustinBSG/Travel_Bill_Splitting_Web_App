@@ -1,12 +1,11 @@
-// join_trip Edge Function client.
-//
-// Contract used by the UI (GAP: confirm with backend):
+// join_trip Edge Function client (backend/functions/join_trip).
 //   join_trip({ token | code, preview: true })
-//     -> { trip: {id,name,start_date,end_date}, placeholders: [{id, display_name}],
-//          already_member: boolean, joining_enabled: boolean }
-//        (must NOT join; lets the user choose "new member" vs "claim")
+//     -> { trip_id, trip: {id,name,start_date,end_date}, placeholders: [{id, display_name}],
+//          already_member, joining_enabled }        (joins nothing)
 //   join_trip({ token | code, claim_placeholder_id? })
-//     -> { trip_id }
+//     -> { trip_id, member_id, claimed }
+// Errors: { error: { code, message } } with invite_invalid 404, joining_disabled 403,
+// trip_locked 403, rate_limited 429, validation_error 422.
 import { functionErrorMessage, supabase } from '../../lib/supabase'
 
 /** 6 chars, no 0/O/1/I. */
@@ -29,7 +28,7 @@ export interface JoinPreview {
 }
 
 export class JoinError extends Error {
-  kind: 'invalid' | 'disabled' | 'rate_limited' | 'other'
+  kind: 'invalid' | 'disabled' | 'locked' | 'rate_limited' | 'other'
   constructor(kind: JoinError['kind'], message: string) {
     super(message)
     this.kind = kind
@@ -39,8 +38,17 @@ export class JoinError extends Error {
 async function call(body: Record<string, unknown>): Promise<Record<string, unknown>> {
   const { data, error } = await supabase.functions.invoke('join_trip', { body })
   if (error) {
-    const { message, status } = await functionErrorMessage(error)
-    const kind = status === 404 ? 'invalid' : status === 403 ? 'disabled' : status === 429 ? 'rate_limited' : 'other'
+    const { message, status, code } = await functionErrorMessage(error)
+    const kind: JoinError['kind'] =
+      code === 'trip_locked'
+        ? 'locked'
+        : code === 'joining_disabled' || status === 403
+          ? 'disabled'
+          : code === 'invite_invalid' || status === 404
+            ? 'invalid'
+            : code === 'rate_limited' || status === 429
+              ? 'rate_limited'
+              : 'other'
     throw new JoinError(kind, message)
   }
   return (data ?? {}) as Record<string, unknown>
