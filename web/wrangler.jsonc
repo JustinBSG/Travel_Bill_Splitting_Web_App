@@ -9,5 +9,8 @@
     "directory": "./dist",
     // client-side routes (/join/<token>, /trips/<id>/...) get index.html with 200
     "not_found_handling": "single-page-application"
-  }
+  },
+  // Required by `npx wrangler preview` (non-main branches, e.g. uat). Empty is
+  // fine: assets and compatibility settings above apply to Previews too.
+  "previews": {}
 }

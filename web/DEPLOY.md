@@ -243,6 +243,7 @@ the backend to production, then merge `uat` into `main`.
 | Symptom | Fix |
 |---|---|
 | Build log: `missing build variables: PROD_VITE_...` | Add the variables in section 4 under **Settings → Build → Variables and secrets**, then retry |
+| Preview build: `missing a previews block` | `web/wrangler.jsonc` must contain `"previews": {}` (it does in this repo; pull the latest `uat`) |
 | Build log: Worker name mismatch | The dashboard Worker name must equal `"name"` in `web/wrangler.jsonc` |
 | Build log: `package.json` not found / `wrangler.jsonc` not found | Root directory / Path must be `web` |
 | Build fails on a Node or Vite version | Set `NODE_VERSION=22` |
