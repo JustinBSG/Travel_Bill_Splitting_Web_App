@@ -26,15 +26,15 @@ Env vars (all public, shipped to the browser — never put the service_role key 
 - `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` — required
 - `VITE_VAPID_PUBLIC_KEY` — optional; Web Push subscribe is hidden when empty
 
-## Deploy (Cloudflare Pages)
+## Deploy (Cloudflare Workers)
 
-Full instructions: **[DEPLOY.md](DEPLOY.md)**. That covers project setup, Production vs Preview
+Full instructions: **[DEPLOY.md](DEPLOY.md)**. That covers Worker setup from GitHub, build
 variables, auto-deploy on push to `main`, releases and rollback.
 
-- Root directory: `web` · Build command: `npm run build` · Output: `dist` · Deploy command: empty
+- Root directory: `web` · Build command: `npm run build:cloudflare` · Deploy command: `npx wrangler deploy`
+- `wrangler.jsonc` serves `./dist` with SPA fallback, so `/join/:token` and `/trips/...` load `index.html`
+- `build:cloudflare` uses `PROD_VITE_*` on `main` and `STAGING_VITE_*` on other branches
 - Pushes to `main` deploy production automatically; other branches get preview URLs (staging backend)
-- SPA fallback for `/join/:token` works because there is **no** top-level `404.html`
-  (Pages then serves `index.html` for unknown paths). Don't add one.
 
 ## Layout
 

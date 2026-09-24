@@ -28,7 +28,7 @@ change → offline tests → local → commit → STAGING (push, deploy, test) �
 | Edge Functions | `supabase/functions/**` | `npx supabase functions deploy --use-api` | Yes: redeploy the previous version |
 | Function secrets | `supabase/functions/.env.<env>` | `npx supabase secrets set` | Yes: set the old value |
 | Dashboard settings | Auth, SMTP, URLs (not in git) | Dashboard | Yes, by hand |
-| Frontend | `web/**` | Cloudflare Pages (auto-deploys on push to the production branch) | Yes: Pages rollback |
+| Frontend | `web/**` | Cloudflare Workers Builds (auto-deploys on push to `main`) | Yes: Cloudflare rollback |
 
 To see what changed since the last release (here `v1.0.0`):
 
@@ -93,7 +93,7 @@ one short section per tag.
 - If a function needs a new RPC or column, **push the database before deploying the function**.
 
 **Frontend**
-- Release the backend **before** merging frontend code that depends on it. Pages deploys the
+- Release the backend **before** merging frontend code that depends on it. Cloudflare deploys the
   production branch automatically, so an early merge would call RPCs that don't exist yet.
 
 ## 4. Release checklist
@@ -149,7 +149,7 @@ bash: `export SUPABASE_DB_PASSWORD=...`.
   cd supabase/node-tests && npm run test:live
   ```
   (with `.env.live` pointing at staging and `LIVE_ALLOW_REMOTE=1`)
-- [ ] Frontend: open a Cloudflare Pages **preview** deployment of the branch (it uses staging) and
+- [ ] Frontend: open the Cloudflare **preview** build of the branch (it uses staging) and
   click through the changed features.
 
 ### 4.3 Tag
@@ -193,8 +193,8 @@ Set the production password. PowerShell: `$env:SUPABASE_DB_PASSWORD = "<PROD_DB_
   ```bash
   npx supabase functions deploy --use-api --project-ref <PROD_REF>
   ```
-- [ ] Frontend: merge or push to the Pages production branch. Wait for the deployment to show
-  **Success** in Cloudflare Pages.
+- [ ] Frontend: merge or push to `main`. Wait for the Cloudflare build and deployment to
+  succeed (Worker → **Deployments**).
 
 ### 4.5 Verify production
 - [ ] pgTAP (rolled back, so safe):
@@ -234,8 +234,8 @@ npx supabase functions deploy --use-api --project-ref <PROD_REF>
 git switch main
 ```
 
-**Frontend.** In Cloudflare Pages → Deployments, open the last good production deployment →
-**Rollback to this deployment**.
+**Frontend.** In Cloudflare, open the Worker → **Deployments**, pick the last good version, and
+click **Rollback**.
 
 **Secrets.** Set the previous value again with `npx supabase secrets set --project-ref <PROD_REF> NAME=value`,
 then redeploy the functions.
@@ -286,7 +286,7 @@ No code release is needed.
   in the SQL Editor, run `select vault.update_secret((select id from vault.secrets where name = 'cron_secret'), '<new value>');`.
   When you rotate `CRON_SECRET` or `PUSH_WEBHOOK_SECRET`, update the Vault **and** the function
   secret together.
-- **Rotating API keys** (Project Settings → API Keys): update Cloudflare Pages
-  (`VITE_SUPABASE_ANON_KEY`) and redeploy the frontend. After a `service_role` rotation, update
+- **Rotating API keys** (Project Settings → API Keys): update the Cloudflare build variables
+  (`PROD_VITE_SUPABASE_ANON_KEY` / `STAGING_VITE_SUPABASE_ANON_KEY`) and retry the build. After a `service_role` rotation, update
   the Vault `service_role_key`.
 - **Auth settings:** change them in the Dashboard, on staging first.

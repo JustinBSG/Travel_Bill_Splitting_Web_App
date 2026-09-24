@@ -27,8 +27,8 @@ command there) and `Copy-Item` instead of `cp`.
 | Environment | What it is | Used by | Live test suite allowed |
 |---|---|---|---|
 | **Local** | Supabase in Docker on your PC (`npx supabase start`) | you, while developing | yes |
-| **Staging** | a separate cloud project: a disposable copy of production | you, and Cloudflare Pages *preview* deployments | yes (`LIVE_ALLOW_REMOTE=1`) |
-| **Production** | the cloud project real users use | the Pages *production* site | **never** |
+| **Staging** | a separate cloud project: a disposable copy of production | you, and Cloudflare *preview* builds (non-`main` branches) | yes (`LIVE_ALLOW_REMOTE=1`) |
+| **Production** | the cloud project real users use | the production site (`main` branch) | **never** |
 
 The rules:
 - Every change goes local → staging → production, with the same migrations, functions and commands.
@@ -45,7 +45,7 @@ STAGING_REF=               PROD_REF=                  (20 letters from the proje
 STAGING_DB_PASSWORD=       PROD_DB_PASSWORD=
 STAGING_ANON_KEY=          PROD_ANON_KEY=             (Project Settings → API Keys → Legacy API keys)
 STAGING_SERVICE_ROLE_KEY=  PROD_SERVICE_ROLE_KEY=     (admin key: never in web/, git or chat)
-PAGES_PROJECT=             CUSTOM_DOMAIN=
+SUBDOMAIN=                 CUSTOM_DOMAIN=             (SUBDOMAIN: your <sub>.workers.dev, see web/DEPLOY.md §6)
 FX_API_KEY=                (Open Exchange Rates free plan works)
 ```
 
@@ -305,9 +305,9 @@ these differences:
 | Setting | Staging | Production |
 |---|---|---|
 | Secrets (D4) | its own | **new** ones: never copy staging's |
-| `ALLOWED_ORIGINS` | `http://localhost:5173,https://*.<PAGES_PROJECT>.pages.dev` | `https://<PAGES_PROJECT>.pages.dev,https://<CUSTOM_DOMAIN>` |
-| Auth → Site URL | `http://localhost:5173` | `https://<CUSTOM_DOMAIN>` (or the pages.dev URL) |
-| Auth → Redirect URLs | `http://localhost:5173/**`, `https://*.<PAGES_PROJECT>.pages.dev/**` | `https://<PAGES_PROJECT>.pages.dev/**`, `https://<CUSTOM_DOMAIN>/**` |
+| `ALLOWED_ORIGINS` | `http://localhost:5173,https://*.<SUBDOMAIN>.workers.dev` | `https://travel-bill-split.<SUBDOMAIN>.workers.dev,https://<CUSTOM_DOMAIN>` |
+| Auth → Site URL | `http://localhost:5173` | `https://<CUSTOM_DOMAIN>` (or the workers.dev URL) |
+| Auth → Redirect URLs | `http://localhost:5173/**`, `https://*.<SUBDOMAIN>.workers.dev/**` | `https://travel-bill-split.<SUBDOMAIN>.workers.dev/**`, `https://<CUSTOM_DOMAIN>/**` |
 | SMTP (Authentication → Emails → SMTP Settings) | built-in is OK | **custom SMTP required** (Resend, Postmark, …). The built-in sender allows only a few emails per hour |
 | Google / Apple | optional | configure both; callback `https://<PROD_REF>.supabase.co/auth/v1/callback` |
 | Vault `project_url` | `https://<STAGING_REF>.supabase.co` | `https://<PROD_REF>.supabase.co` |
@@ -329,22 +329,15 @@ Then verify production:
 
 ---
 
-## G. Connect the frontend (Cloudflare Pages)
+## G. Connect the frontend (Cloudflare)
 
-Step-by-step Pages setup, auto-deploys and frontend releases: **[web/DEPLOY.md](../web/DEPLOY.md)**.
+Step-by-step setup, auto-deploys and frontend releases: **[web/DEPLOY.md](../web/DEPLOY.md)**.
 
-Set these in the Pages project, under **Settings → Variables and Secrets** (older layouts:
-*Environment variables*):
-
-| Variable | Production | Preview |
-|---|---|---|
-| `VITE_SUPABASE_URL` | `https://<PROD_REF>.supabase.co` | `https://<STAGING_REF>.supabase.co` |
-| `VITE_SUPABASE_ANON_KEY` | `<PROD_ANON_KEY>` | `<STAGING_ANON_KEY>` |
-| `VITE_VAPID_PUBLIC_KEY` | production VAPID public key | staging VAPID public key |
-
-Redeploy after changing them. Every preview deployment (a branch or pull request) then talks to
-staging, and only the production site talks to production. Your own `web/.env.local` should
-normally point at staging or local.
+The frontend is a Cloudflare Worker serving static files, built from GitHub. Its build variables
+hold both environments: `PROD_VITE_SUPABASE_URL` / `PROD_VITE_SUPABASE_ANON_KEY` /
+`PROD_VITE_VAPID_PUBLIC_KEY` (used on `main`), and the same names with `STAGING_` (used on every
+other branch). Preview builds therefore talk to staging, and only production talks to production.
+Your own `web/.env.local` should normally point at staging or local.
 
 ---
 

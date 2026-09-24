@@ -1,0 +1,13 @@
+// Cloudflare Workers (static assets only, no Worker script) for the PWA.
+// Workers Builds runs `npm run build:cloudflare`, then `npx wrangler deploy`
+// from web/ (see web/DEPLOY.md).
+{
+  // becomes https://travel-bill-split.<your-subdomain>.workers.dev
+  "name": "travel-bill-split",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "./dist",
+    // client-side routes (/join/<token>, /trips/<id>/...) get index.html with 200
+    "not_found_handling": "single-page-application"
+  }
+}

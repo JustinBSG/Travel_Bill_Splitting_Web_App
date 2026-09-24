@@ -43,7 +43,7 @@ CLI state such as the linked project ref is saved in `supabase/.temp/` (git-igno
 
 - **[DEPLOY.md](DEPLOY.md)**: first-time setup. Local stack, then a **staging** project, then
   **production**, each with its own keys and secrets. Covers Vault, function secrets, Auth
-  settings, the first FX fetch, verification, Cloudflare Pages variables and troubleshooting.
+  settings, the first FX fetch, verification, Cloudflare build variables and troubleshooting.
 - **[RELEASE.md](RELEASE.md)**: shipping a new version to production. Covers semantic-version
   tags, safe migrations (expand then contract), the staging-then-production checklist, rollback
   and hotfixes.
