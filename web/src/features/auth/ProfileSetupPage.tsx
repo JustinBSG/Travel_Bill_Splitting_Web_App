@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ErrorBox } from '../../app/ui/common'
+import { ErrorBox, Seal } from '../../app/ui/common'
 import { detectDeviceLanguage, setLanguage } from '../../lib/i18n'
 import { supabase } from '../../lib/supabase'
 import type { Language } from '../../lib/types'
@@ -42,7 +42,8 @@ export function ProfileSetupPage() {
   return (
     <div className="login">
       <form className="login-card stack" onSubmit={submit} noValidate>
-        <h1>{t('profile.welcome')}</h1>
+        <Seal size={56} />
+        <h1 className="page-title">{t('profile.welcome')}</h1>
         <p className="muted">{t('profile.intro')}</p>
         {profileError && <ErrorBox message={profileError} onRetry={refreshProfile} />}
         {error && <ErrorBox message={error} />}

@@ -1,10 +1,13 @@
 ==============================================================================
  TRAVEL BILL SPLIT — FRONTEND AGENT BRIEF
  For another AI / engineer implementing the React PWA only
- Version: 1.3
+ Version: 1.4
  Date: 2026-09-24
  Source of truth: travel-bill-split-app-spec.txt (v1.3 + section 12 freeze)
  Change log:
+   1.4  Colour theme: Washi (default) / Classic in Settings and the trip
+        menu. Conclusion shown as "Settle up", who pays whom first. See 2,
+        3.13, 6.
    1.3  Appearance: System / Light / Dark in Settings and the trip menu.
         See 2, 6.
    1.2  Language switch in the trip menu; VITE_VAPID_PUBLIC_KEY env var;
@@ -111,7 +114,7 @@ App-level routes
   /trips                         My Trips + Create + Join with code
   /join/:token                   invite link landing
   /notifications
-  /settings                      name, language, appearance, notification toggles
+  /settings                      name, language, appearance, theme, notification toggles
   /trips/:tripId                 trip shell (swipe / tab bar)
 
 Inside a trip, pages IN THIS ORDER
@@ -128,6 +131,7 @@ Trip menu (not in the swipe strip)
   Export CSV
   Language                       English / 繁體中文 switch (same as Settings)
   Appearance                     System / Light / Dark switch (same as Settings)
+  Theme                          Washi / Classic switch (same as Settings)
 
 Example 4-day trip 12-15 Oct:
   Overview | Pre-trip | 12 Oct | 13 Oct | 14 Oct | 15 Oct | Post-trip | Conclusion
@@ -295,6 +299,8 @@ Locked trip (is_locked = true)
     plus who-pays-whom list
 
 3.13 Conclusion (last page) — CRITICAL
+  Tab label "Settle up" (結算). Display order: who pays whom (the viewer's
+  own payment highlighted first), balances, then stats.
   Section 1  Stats (see money rules)
   Section 2  Balances per member (+ owed, - owes)
   Section 3  Who pays whom (min payments, greedy)
@@ -446,6 +452,11 @@ excludes removed_at != null.
     Light / Dark. Saved per device (localStorage 'tbs-theme'), applied as
     <html data-theme="light|dark"> by an inline script before first paint
     (no flash); theme-color meta follows the top bar colour
+  - Colour theme: Washi (default) / Classic. Saved per device
+    (localStorage 'tbs-palette'), applied as <html data-palette="washi|
+    classic"> by the same inline script. Components use CSS tokens only,
+    so each theme is one token block per appearance in index.css
+  - Icons are line SVGs (no emoji) so they follow the theme colours
   - User-typed titles/notes stay as typed (no translation)
   - Category names ARE translated
   - Reduced motion: disable page-swipe animation if prefers-reduced-motion

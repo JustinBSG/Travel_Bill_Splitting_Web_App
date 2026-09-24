@@ -2,7 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFmt } from '../../app/useFmt'
 import { useToast } from '../../app/ui/toast'
-import { Banner, ErrorBox, PageHeader } from '../../app/ui/common'
+import { Avatar, Banner, ErrorBox, PageHeader } from '../../app/ui/common'
 import { Icon } from '../../app/ui/Icon'
 import { Modal } from '../../app/ui/Modal'
 import { HKD, ZERO } from '../../lib/money'
@@ -25,7 +25,9 @@ export function MembersPage() {
   const currencies = useMemo(() => activeCurrencies(nets), [nets])
   const hasBalance = (id: string) => currencies.some((c) => !netOf(nets, id, c).isZero())
 
-  const sorted = [...members].sort((a, b) => Number(!!a.removed_at) - Number(!!b.removed_at))
+  const sorted = members
+    .map((m, index) => ({ m, index }))
+    .sort((a, b) => Number(!!a.m.removed_at) - Number(!!b.m.removed_at))
 
   async function run(fn: () => Promise<void>, success?: string) {
     setBusy(true)
@@ -61,42 +63,45 @@ export function MembersPage() {
         {error && <ErrorBox message={error} />}
 
         <ul className="list">
-          {sorted.map((m) => {
+          {sorted.map(({ m, index }) => {
             const bal = hkd.balances.get(m.id) ?? ZERO
             const canManage = isAdmin && !locked && !m.removed_at && m.role !== 'owner' && m.id !== me?.id
             return (
               <li key={m.id} className={`list-row member-row ${m.removed_at ? 'removed' : ''}`}>
+                <Avatar name={m.display_name} index={index} placeholder={!m.user_id} size={40} />
                 <div className="list-main">
-                  <span>
-                    <strong>{m.display_name}</strong>
-                    {m.id === me?.id && ` (${t('app.you')})`}
+                  <span className="row-between baseline">
+                    <span>
+                      <strong>{m.display_name}</strong>
+                      {m.id === me?.id && <span className="muted"> ({t('app.you')})</span>}
+                    </span>
+                    <span className={`strong small ${bal.isZero() ? 'muted' : bal.isPositive() ? 'pos' : 'neg'}`}>
+                      {fmt.signed(bal, HKD)}
+                    </span>
                   </span>
                   <span className="row-gap wrap">
                     <span className="badge">{t(`members.roles.${m.role}`)}</span>
-                    {!m.user_id && <span className="badge badge-muted">{t('members.placeholder')}</span>}
+                    {!m.user_id && <span className="badge badge-dashed">{t('members.placeholder')}</span>}
                     {m.removed_at && <span className="badge badge-muted">{t('members.left')}</span>}
                   </span>
-                  <span className={`small ${bal.isZero() ? 'muted' : bal.isPositive() ? 'pos' : 'neg'}`}>
-                    {fmt.signed(bal, HKD)}
-                  </span>
-                </div>
-                {canManage && (
-                  <div className="member-actions">
-                    {m.role === 'member' && (
-                      <button
-                        type="button"
-                        className="btn btn-small"
-                        disabled={busy}
-                        onClick={() => void run(() => promoteToAdmin(m.id), t('members.promoted', { name: m.display_name }))}
-                      >
-                        {t('members.makeAdmin')}
+                  {canManage && (
+                    <div className="member-actions">
+                      {m.role === 'member' && (
+                        <button
+                          type="button"
+                          className="btn btn-small"
+                          disabled={busy}
+                          onClick={() => void run(() => promoteToAdmin(m.id), t('members.promoted', { name: m.display_name }))}
+                        >
+                          {t('members.makeAdmin')}
+                        </button>
+                      )}
+                      <button type="button" className="btn btn-small btn-danger" disabled={busy} onClick={() => setRemoving(m)}>
+                        {t('members.remove')}
                       </button>
-                    )}
-                    <button type="button" className="btn btn-small btn-danger" disabled={busy} onClick={() => setRemoving(m)}>
-                      {t('members.remove')}
-                    </button>
-                  </div>
-                )}
+                    </div>
+                  )}
+                </div>
               </li>
             )
           })}
@@ -104,7 +109,7 @@ export function MembersPage() {
 
         {!locked && (
           <form className="card stack" onSubmit={add}>
-            <h2 className="section-title">{t('members.addPlaceholder')}</h2>
+            <h2 className="card-title">{t('members.addPlaceholder')}</h2>
             <p className="muted small">{t('members.placeholderHint')}</p>
             <div className="row-gap">
               <label className="field grow">

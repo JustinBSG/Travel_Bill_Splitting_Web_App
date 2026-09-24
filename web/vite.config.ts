@@ -24,8 +24,8 @@ export default defineConfig({
         short_name: 'BillSplit',
         description: 'Split travel expenses with friends',
         lang: 'en',
-        theme_color: '#0f766e',
-        background_color: '#f8fafc',
+        theme_color: '#f3eee3',
+        background_color: '#f3eee3',
         display: 'standalone',
         start_url: '/',
         scope: '/',
@@ -41,6 +41,23 @@ export default defineConfig({
         // Web Push handlers live in public/push-sw.js (generateSW has none).
         importScripts: ['push-sw.js'],
         globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}'],
+        // Google Fonts (Washi theme): keep the CSS fresh, cache the font files.
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }) => url.origin === 'https://fonts.googleapis.com',
+            handler: 'StaleWhileRevalidate',
+            options: { cacheName: 'google-fonts-css' },
+          },
+          {
+            urlPattern: ({ url }) => url.origin === 'https://fonts.gstatic.com',
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'google-fonts-files',
+              expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
       },
     }),
   ],

@@ -78,6 +78,12 @@ export function formatNumber(minor: Decimal, currency: string, locale: string): 
   return nf.format(major as `${number}`)
 }
 
+/** Whole-dollar HKD for tight chart labels, e.g. 952000 cents -> "9,520". */
+export function formatHkdWhole(cents: Decimal, locale: string): string {
+  const whole = cents.abs().div(100).toDecimalPlaces(0, Dec.ROUND_HALF_UP).toFixed(0)
+  return new Intl.NumberFormat(locale, { maximumFractionDigits: 0, useGrouping: true }).format(whole as `${number}`)
+}
+
 /**
  * "3,000 JPY", "HK$ 157.80", "-HK$ 5.00". HKD uses the HK$ prefix as in the
  * spec examples; other currencies show the ISO code suffix.

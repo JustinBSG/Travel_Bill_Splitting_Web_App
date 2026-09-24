@@ -1,13 +1,19 @@
-// Light / dark mode. The preference is per device (localStorage); 'system'
-// follows the phone setting live. index.html applies it before first paint.
+// Appearance (light / dark) and colour theme (palette), both saved per device
+// (localStorage, not the profile). 'system' follows the phone setting live.
+// index.html applies both before first paint; keep the two in sync.
 import { useSyncExternalStore } from 'react'
 
 export type ThemePref = 'system' | 'light' | 'dark'
+export type Palette = 'washi' | 'classic'
 
 const KEY = 'tbs-theme'
+const PALETTE_KEY = 'tbs-palette'
 const DARK_QUERY = '(prefers-color-scheme: dark)'
-/** Matches the top bar (--surface) so the browser/status bar blends in. */
-const THEME_COLOR = { light: '#ffffff', dark: '#111827' }
+/** Matches the top bar background so the browser/status bar blends in. */
+const THEME_COLOR: Record<Palette, { light: string; dark: string }> = {
+  washi: { light: '#f3eee3', dark: '#1b1916' },
+  classic: { light: '#ffffff', dark: '#111827' },
+}
 
 function readPref(): ThemePref {
   try {
@@ -18,35 +24,57 @@ function readPref(): ThemePref {
   }
 }
 
+function readPalette(): Palette {
+  try {
+    return localStorage.getItem(PALETTE_KEY) === 'classic' ? 'classic' : 'washi'
+  } catch {
+    return 'washi'
+  }
+}
+
 function systemIsDark(): boolean {
   return window.matchMedia?.(DARK_QUERY).matches ?? false
 }
 
-function apply(p: ThemePref) {
-  const theme = p === 'system' ? (systemIsDark() ? 'dark' : 'light') : p
-  document.documentElement.setAttribute('data-theme', theme)
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', THEME_COLOR[theme])
+function apply() {
+  const theme = pref === 'system' ? (systemIsDark() ? 'dark' : 'light') : pref
+  const root = document.documentElement
+  root.setAttribute('data-theme', theme)
+  root.setAttribute('data-palette', palette)
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', THEME_COLOR[palette][theme])
 }
 
 let pref: ThemePref = readPref()
+let palette: Palette = readPalette()
 const listeners = new Set<() => void>()
 
 if (typeof window !== 'undefined') {
-  apply(pref)
+  apply()
   window.matchMedia?.(DARK_QUERY).addEventListener('change', () => {
-    if (pref === 'system') apply('system')
+    if (pref === 'system') apply()
   })
+}
+
+function save(key: string, value: string | null) {
+  try {
+    if (value === null) localStorage.removeItem(key)
+    else localStorage.setItem(key, value)
+  } catch {
+    /* private mode: still applies for this session */
+  }
 }
 
 export function setThemePref(p: ThemePref) {
   pref = p
-  try {
-    if (p === 'system') localStorage.removeItem(KEY)
-    else localStorage.setItem(KEY, p)
-  } catch {
-    /* private mode: still applies for this session */
-  }
-  apply(p)
+  save(KEY, p === 'system' ? null : p)
+  apply()
+  listeners.forEach((l) => l())
+}
+
+export function setPalette(p: Palette) {
+  palette = p
+  save(PALETTE_KEY, p === 'washi' ? null : p)
+  apply()
   listeners.forEach((l) => l())
 }
 
@@ -59,4 +87,8 @@ function subscribe(l: () => void) {
 
 export function useThemePref(): ThemePref {
   return useSyncExternalStore(subscribe, () => pref)
+}
+
+export function usePalette(): Palette {
+  return useSyncExternalStore(subscribe, () => palette)
 }

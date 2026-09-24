@@ -37,6 +37,7 @@ export function Modal({ title, onClose, children, footer }: Props) {
         ref={panel}
         onClick={(e) => e.stopPropagation()}
       >
+        <span className="modal-grabber" aria-hidden />
         <div className="modal-head">
           <h2 id={titleId}>{title}</h2>
           <button type="button" className="icon-btn" onClick={onClose} aria-label={t('app.close')}>

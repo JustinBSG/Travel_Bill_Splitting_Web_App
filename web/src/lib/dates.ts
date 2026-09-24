@@ -175,6 +175,13 @@ export function formatWeekday(d: ISODate, locale: string): string {
   return new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'UTC' }).format(parseUtc(d))
 }
 
+/** "Sunday 11 October" / "10月11日星期日". */
+export function formatLongDate(d: ISODate, locale: string): string {
+  return new Intl.DateTimeFormat(locale, { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }).format(
+    parseUtc(d),
+  )
+}
+
 export function formatFullDate(d: ISODate, locale: string): string {
   return new Intl.DateTimeFormat(locale, {
     day: 'numeric',

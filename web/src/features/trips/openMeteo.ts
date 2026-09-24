@@ -2,6 +2,7 @@
 //   Geocoding: city search -> coordinates, country, timezone
 //   Forecast:  ~16 days ahead (also serves the recent past)
 //   Archive:   older past dates
+import type { IconName } from '../../app/ui/Icon'
 import { addDays, todayIn } from '../../lib/dates'
 import type { ISODate, TripDay } from '../../lib/types'
 
@@ -173,17 +174,17 @@ export async function fetchTripWeather(days: TripDay[]): Promise<Map<ISODate, We
   return out
 }
 
-/** WMO weather code -> emoji + i18n key. */
-export function weatherIcon(code: number): { emoji: string; key: WeatherKey } {
-  if (code === 0) return { emoji: '☀️', key: 'clear' }
-  if (code <= 2) return { emoji: '🌤️', key: 'partlyCloudy' }
-  if (code === 3) return { emoji: '☁️', key: 'cloudy' }
-  if (code === 45 || code === 48) return { emoji: '🌫️', key: 'fog' }
-  if (code >= 51 && code <= 57) return { emoji: '🌦️', key: 'drizzle' }
-  if ((code >= 61 && code <= 67) || (code >= 80 && code <= 82)) return { emoji: '🌧️', key: 'rain' }
-  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return { emoji: '🌨️', key: 'snow' }
-  if (code >= 95) return { emoji: '⛈️', key: 'thunder' }
-  return { emoji: '🌡️', key: 'unknown' }
+/** WMO weather code -> line icon + i18n key. */
+export function weatherIcon(code: number): { icon: IconName; key: WeatherKey } {
+  if (code === 0) return { icon: 'sun', key: 'clear' }
+  if (code <= 2) return { icon: 'partlyCloudy', key: 'partlyCloudy' }
+  if (code === 3) return { icon: 'cloud', key: 'cloudy' }
+  if (code === 45 || code === 48) return { icon: 'fog', key: 'fog' }
+  if (code >= 51 && code <= 57) return { icon: 'drizzle', key: 'drizzle' }
+  if ((code >= 61 && code <= 67) || (code >= 80 && code <= 82)) return { icon: 'rain', key: 'rain' }
+  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return { icon: 'snow', key: 'snow' }
+  if (code >= 95) return { icon: 'thunder', key: 'thunder' }
+  return { icon: 'thermometer', key: 'unknown' }
 }
 
 export type WeatherKey = 'clear' | 'partlyCloudy' | 'cloudy' | 'fog' | 'drizzle' | 'rain' | 'snow' | 'thunder' | 'unknown'

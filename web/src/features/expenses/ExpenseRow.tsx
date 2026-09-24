@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { useFmt } from '../../app/useFmt'
+import { Icon } from '../../app/ui/Icon'
 import { multiDayPosition, utcToLocalParts, type ExpensePageKey } from '../../lib/dates'
 import { HKD, fromHkdCents, toMinor } from '../../lib/money'
 import type { Expense, ISODate } from '../../lib/types'
@@ -14,18 +15,21 @@ interface Props {
   page: ExpensePageKey
   /** Local currency of the page's date (HKD for pre/post). */
   pageCurrency: string
+  /** Timezone of the page; the time zone is only spelled out when a row differs. */
+  pageTz: string
   /** Date used for the multi-day "(Day X of N)" label when pinned. */
   pinnedOn?: ISODate
 }
 
-export function ExpenseRow({ expense: e, page, pageCurrency, pinnedOn }: Props) {
+/** One ledger line: time | title, who paid, what it means for me | amounts. */
+export function ExpenseRow({ expense: e, page, pageCurrency, pageTz, pinnedOn }: Props) {
   const { t } = useTranslation()
   const fmt = useFmt()
   const { trip, activeMembers, me, memberName, rateFor } = useTripData()
   const labels = usePageLabels()
 
   const local = utcToLocalParts(e.occurred_at, e.timezone)
-  const city = labels.tzLabel(e.timezone, e.local_date)
+  const otherTz = e.timezone !== pageTz ? t('expense.localTime', { city: labels.tzLabel(e.timezone, e.local_date) }) : null
   const personal = e.expense_participants.length === 0
   const participantIds = e.expense_participants.map((p) => p.member_id)
   const everyone =
@@ -47,11 +51,30 @@ export function ExpenseRow({ expense: e, page, pageCurrency, pinnedOn }: Props) 
 
   return (
     <li>
-      <Link to={`/trips/${trip.id}/expense/${e.id}?page=${encodeURIComponent(page)}`} className="expense-row">
-        <span className="expense-icon" aria-hidden>
-          {categoryIcon(e.category)}
-        </span>
+      <Link
+        to={`/trips/${trip.id}/expense/${e.id}?page=${encodeURIComponent(page)}`}
+        className={`expense-row${pinnedOn ? ' expense-row-pinned' : ''}`}
+      >
+        {!pinnedOn && (
+          <span className="expense-time">
+            {local.time}
+            {otherTz && <span className="expense-tz">{otherTz}</span>}
+          </span>
+        )}
         <span className="expense-main">
+          <span className="expense-title">
+            <span className="expense-icon">
+              <Icon name={categoryIcon(e.category)} size={17} label={categoryLabel(t, e.category)} />
+            </span>
+            <span className="expense-title-text">{e.title}</span>
+            {personal && <span className="badge badge-outline">{t('expense.personal')}</span>}
+            {e.category === 'Loan' && <span className="badge badge-outline">{t('category.loan')}</span>}
+            {e.photo_path && (
+              <span className="expense-photo">
+                <Icon name="camera" size={15} label={t('form.photo')} />
+              </span>
+            )}
+          </span>
           {pos && e.end_date && (
             <span className="badge badge-multi">
               {t('expense.multiDay', {
@@ -61,26 +84,8 @@ export function ExpenseRow({ expense: e, page, pageCurrency, pinnedOn }: Props) 
               })}
             </span>
           )}
-          <span className="expense-title">
-            {e.title}
-            {personal && <span className="badge badge-personal">{t('expense.personal')}</span>}
-            {e.photo_path && (
-              <span className="muted" aria-label={t('form.photo')}>
-                {' '}
-                📷
-              </span>
-            )}
-          </span>
-          <span className="muted small">
-            {categoryLabel(t, e.category)} · {local.time} ({t('expense.localTime', { city })})
-          </span>
-          <span className="expense-amount">
-            {fmt.money(e.amount, e.currency)}
-            {e.currency !== HKD && e.amount_hkd !== null && <> ({fmt.money(e.amount_hkd, HKD)})</>}
-            {e.amount_hkd === null && e.currency !== HKD && <span className="muted small"> · {t('fx.pending')}</span>}
-            {localEquivalent && <span className="muted small"> ≈ {fmt.money(localEquivalent, pageCurrency)}</span>}
-          </span>
-          <span className="small">
+          <span className="expense-meta">
+            {pinnedOn && `${local.time}${otherTz ? ` (${otherTz})` : ''} · `}
             {t('expense.paidBy', { name: memberName(e.paid_by) })}
             {!personal && (
               <>
@@ -106,6 +111,12 @@ export function ExpenseRow({ expense: e, page, pageCurrency, pinnedOn }: Props) 
             {meaning.kind === 'owe' &&
               t('meaning.owe', { name: memberName(meaning.to), amount: withHkd(meaning.amount, meaning.amountHkd) })}
           </span>
+        </span>
+        <span className="expense-amounts">
+          <span className="expense-amount">{fmt.money(e.amount, e.currency)}</span>
+          {e.currency !== HKD && e.amount_hkd !== null && <span className="expense-sub">{fmt.money(e.amount_hkd, HKD)}</span>}
+          {e.amount_hkd === null && e.currency !== HKD && <span className="expense-sub">{t('fx.pending')}</span>}
+          {localEquivalent && <span className="expense-sub">≈ {fmt.money(localEquivalent, pageCurrency)}</span>}
         </span>
       </Link>
     </li>

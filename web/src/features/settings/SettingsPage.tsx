@@ -9,6 +9,7 @@ import { useAuth, useUser } from '../auth/AuthContext'
 import { NOTIFICATION_TYPES, type NotificationType } from '../notifications/notificationTypes'
 import { currentPushSubscription, disablePush, enablePush, pushSupport } from '../notifications/push'
 import { LanguageSwitch } from './LanguageSwitch'
+import { PaletteSwitch } from './PaletteSwitch'
 import { ThemeSwitch } from './ThemeSwitch'
 
 async function fetchPrefs(userId: string): Promise<Record<string, boolean>> {
@@ -95,8 +96,8 @@ export function SettingsPage() {
       <main className="content stack">
         {error && <ErrorBox message={error} />}
 
+        <h2 className="section-title">{t('settings.profile')}</h2>
         <section className="card stack">
-          <h2 className="section-title">{t('settings.profile')}</h2>
           <label className="field">
             <span>{t('profile.displayName')}</span>
             <div className="row-gap">
@@ -119,20 +120,31 @@ export function SettingsPage() {
             <span>{t('settings.theme')}</span>
             <ThemeSwitch />
           </div>
-          <p className="muted small">{user.email}</p>
+          <div className="field">
+            <span>{t('settings.palette')}</span>
+            <PaletteSwitch />
+            <p className="muted small">{t('settings.themeHint')}</p>
+          </div>
+          <p className="muted small card-foot">{user.email}</p>
         </section>
 
+        <h2 className="section-title">{t('settings.notifications')}</h2>
         <section className="card stack">
-          <h2 className="section-title">{t('settings.notifications')}</h2>
           <p className="muted small">{t('settings.notificationsHint')}</p>
           {NOTIFICATION_TYPES.map((type) => (
-            <label key={type} className="check-row">
-              <input type="checkbox" checked={prefs[type] ?? true} onChange={(e) => void togglePref(type, e.target.checked)} />
+            <label key={type} className="switch-row">
               <span>{t(`settings.notif.${type}`)}</span>
+              <input
+                type="checkbox"
+                role="switch"
+                className="switch"
+                checked={prefs[type] ?? true}
+                onChange={(e) => void togglePref(type, e.target.checked)}
+              />
             </label>
           ))}
 
-          <h3 className="section-title">{t('settings.push')}</h3>
+          <h3 className="field-label push-title">{t('settings.push')}</h3>
           {support === 'supported' && (
             <button type="button" className="btn" disabled={pushBusy} onClick={() => void togglePush()}>
               {pushOn ? t('settings.pushDisable') : t('settings.pushEnable')}

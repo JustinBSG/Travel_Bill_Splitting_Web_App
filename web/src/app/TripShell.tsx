@@ -4,6 +4,7 @@ import { Link, Navigate, useNavigate, useParams } from 'react-router'
 import { ExpensePage } from '../features/expenses/ExpensePage'
 import { BellButton } from '../features/notifications/BellButton'
 import { LanguageSwitch } from '../features/settings/LanguageSwitch'
+import { PaletteSwitch } from '../features/settings/PaletteSwitch'
 import { ThemeSwitch } from '../features/settings/ThemeSwitch'
 import { ConclusionPage } from '../features/settlement/ConclusionPage'
 import { OverviewPage } from '../features/trips/OverviewPage'
@@ -11,7 +12,8 @@ import { useTripData } from '../features/trips/TripDataContext'
 import { buildTripCsvFiles, deliverFiles } from '../features/trips/exportCsv'
 import { usePageLabels } from '../features/trips/usePageLabels'
 import { useTripWeather } from '../features/trips/useTripWeather'
-import type { PageKey } from '../lib/dates'
+import { todayIn, type PageKey } from '../lib/dates'
+import { useFmt } from './useFmt'
 import { useReducedMotion } from './useReducedMotion'
 import { useToast } from './ui/toast'
 import { Banner } from './ui/common'
@@ -22,17 +24,27 @@ function isExpensePage(k: PageKey) {
   return k !== 'overview' && k !== 'conclusion'
 }
 
+function isDayPage(k: PageKey) {
+  return isExpensePage(k) && k !== 'pre' && k !== 'post'
+}
+
+/** 0 = Sunday ... 6 = Saturday, for an ISO date. */
+function weekdayIndex(date: string): number {
+  return new Date(`${date}T00:00:00Z`).getUTCDay()
+}
+
 /**
  * Trip pages in a horizontal scroll-snap strip (native swipe on iOS/Android)
  * plus a chip strip to jump. URL is the source of truth: /trips/:id/:pageKey
  */
 export function TripShell() {
   const { t } = useTranslation()
+  const fmt = useFmt()
   const { pageKey = 'overview' } = useParams()
   const navigate = useNavigate()
   const toast = useToast()
   const data = useTripData()
-  const { trip, pages, locked, me, isAdmin, days } = data
+  const { trip, pages, locked, me, isAdmin, days, tzForDate } = data
   const labels = usePageLabels()
   const weather = useTripWeather(days)
   const reduced = useReducedMotion()
@@ -126,14 +138,22 @@ export function TripShell() {
 
   if (index < 0) return <Navigate to={`/trips/${trip.id}/overview`} replace />
 
-  const chipLabel = (k: PageKey) =>
-    isExpensePage(k) && k !== 'pre' && k !== 'post' ? (
+  /** Text tab, or a tear-off-calendar tab (weekday over the date) for trip days. */
+  const tab = (k: PageKey, active: boolean) => {
+    if (!isDayPage(k)) return <span className="tab-text">{labels.short(k)}</span>
+    const wd = weekdayIndex(k)
+    return (
       <>
-        <span className="chip-sub">{t('pages.dayShort', { n: labels.dayNumber(k) })}</span> {labels.short(k)}
+        <span className={`tab-wd${wd === 6 ? ' wd-sat' : wd === 0 ? ' wd-sun' : ''}`}>
+          {fmt.weekday(k)}
+          {todayIn(tzForDate(k)) === k && <span className="tab-today" aria-hidden />}
+        </span>
+        <span className={`tab-date${active ? ' active' : ''}`}>{Number(k.slice(8))}</span>
       </>
-    ) : (
-      labels.short(k)
     )
+  }
+  const tabLabel = (k: PageKey) =>
+    isDayPage(k) ? `${t('pages.day', { n: labels.dayNumber(k) })}, ${fmt.weekday(k)} ${fmt.dayMonth(k)}` : undefined
 
   return (
     <div className="trip-shell">
@@ -153,12 +173,12 @@ export function TripShell() {
         <div className="topbar-actions">
           <BellButton />
           <button type="button" className="icon-btn" aria-label={t('menu.title')} onClick={() => setMenuOpen(true)}>
-            <Icon name="more" />
+            <Icon name="more" stroke={2.8} />
           </button>
         </div>
       </header>
 
-      <nav className="chip-strip" aria-label={t('menu.pages')} ref={strip}>
+      <nav className="tab-strip" aria-label={t('menu.pages')} ref={strip}>
         {pages.map((k, i) => (
           <button
             key={k}
@@ -166,11 +186,12 @@ export function TripShell() {
               chips.current[i] = el
             }}
             type="button"
-            className={`chip ${i === index ? 'chip-active' : ''}`}
+            className={`tab${isDayPage(k) ? ' tab-day' : ''}${i === index ? ' tab-active' : ''}`}
             aria-current={i === index ? 'page' : undefined}
+            aria-label={tabLabel(k)}
             onClick={() => go(k)}
           >
-            {chipLabel(k)}
+            {tab(k, i === index)}
           </button>
         ))}
       </nav>
@@ -205,9 +226,9 @@ export function TripShell() {
         <Link
           to={`/trips/${trip.id}/expense/new?page=${encodeURIComponent(pageKey)}`}
           className="fab"
-          aria-label={t('expense.add')}
         >
-          <Icon name="plus" size={30} />
+          <Icon name="plus" size={22} stroke={2.2} />
+          <span>{t('expense.add')}</span>
         </Link>
       )}
 
@@ -216,32 +237,41 @@ export function TripShell() {
           <ul className="menu-list">
             <li>
               <Link to={`/trips/${trip.id}/members`} className="menu-item">
-                <Icon name="users" /> {t('menu.members')}
+                <Icon name="users" />
+                <span className="grow">{t('menu.members')}</span>
+                <Icon name="chevronRight" size={18} />
               </Link>
             </li>
             <li>
               <Link to={`/trips/${trip.id}/activity`} className="menu-item">
-                <Icon name="history" /> {t('menu.activity')}
+                <Icon name="history" />
+                <span className="grow">{t('menu.activity')}</span>
+                <Icon name="chevronRight" size={18} />
               </Link>
             </li>
             {isAdmin && (
               <li>
                 <Link to={`/trips/${trip.id}/settings`} className="menu-item">
-                  <Icon name="settings" /> {t('menu.tripSettings')}
+                  <Icon name="settings" />
+                  <span className="grow">{t('menu.tripSettings')}</span>
+                  <Icon name="chevronRight" size={18} />
                 </Link>
               </li>
             )}
             <li>
               <button type="button" className="menu-item" disabled={exporting} onClick={() => void exportCsv()}>
-                <Icon name="download" /> {exporting ? t('app.loading') : t('menu.exportCsv')}
+                <Icon name="download" />
+                <span className="grow">{exporting ? t('app.loading') : t('menu.exportCsv')}</span>
               </button>
             </li>
           </ul>
           <div className="menu-language">
-            <span className="section-title">{t('settings.language')}</span>
+            <span className="field-label">{t('settings.language')}</span>
             <LanguageSwitch />
-            <span className="section-title">{t('settings.theme')}</span>
+            <span className="field-label">{t('settings.theme')}</span>
             <ThemeSwitch />
+            <span className="field-label">{t('settings.palette')}</span>
+            <PaletteSwitch />
           </div>
         </Modal>
       )}

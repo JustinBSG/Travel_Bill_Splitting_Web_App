@@ -36,7 +36,7 @@ Env vars (all public, shipped to the browser — never put the service_role key 
 
 ```
 src/
-  app/            routes (App.tsx), trip shell (swipe + chip strip), install prompt, shared UI
+  app/            routes (App.tsx), trip shell (swipe + calendar tab strip), theme, install prompt, shared UI
   features/
     auth/         email OTP (code typed in-app, never magic links), Google, Apple, first-login profile
     trips/        My Trips, create trip + per-date locations, join, overview, weather, trip settings, CSV export
@@ -85,6 +85,14 @@ src/
   Saved per device (`localStorage` key `tbs-theme`, not the profile). An inline script in `index.html`
   sets `<html data-theme>` before first paint; `src/app/theme.ts` keeps it in sync. Dark colours are the
   `:root[data-theme='dark']` tokens in `src/index.css`.
+- **Colour theme** (Washi / Classic) next to Appearance, in Settings and the trip menu. Washi is the
+  default "Washi & Sumi" design (paper grain, ink buttons, vermilion accent, Shippori Mincho + Zen Kaku
+  Gothic New, Noto Serif/Sans TC for 繁體中文, loaded from Google Fonts and cached by the service worker).
+  Classic is the original teal look with system fonts. Saved per device (`localStorage` key `tbs-palette`)
+  and set as `<html data-palette>` by the same inline script. Each theme × appearance is one token block
+  in `src/index.css`; components never use raw colours. Design reference: `docs/design/washi-sumi/`.
+- **Settle up** (the Conclusion page) lists who pays whom first (your own payment highlighted), then
+  balances, then stats.
 - Soft delete only (`deleted_at`), with Undo toast and Restore from the Activity log.
 - Locked trip: all write controls hidden/disabled; admins can still unlock in Trip settings.
 

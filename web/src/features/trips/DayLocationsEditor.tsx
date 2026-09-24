@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFmt } from '../../app/useFmt'
+import { Icon } from '../../app/ui/Icon'
 import { knownCurrencies } from '../../lib/currencies'
 import { tzCity } from '../../lib/dates'
 import type { ISODate } from '../../lib/types'
@@ -45,11 +46,16 @@ export function DayLocationsEditor({ dates, value, onChange, disabled }: Props) 
             </div>
             {loc && editing !== date && (
               <div className="row-between">
-                <span>
-                  📍 {loc.location_name}
-                  {loc.country_code ? `, ${loc.country_code}` : ''}{' '}
-                  <span className="muted small">
-                    · {tzCity(loc.timezone)} {t('location.time')}
+                <span className="with-icon">
+                  <Icon name="pin" size={18} />
+                  <span className="list-main">
+                    <span>
+                      {loc.location_name}
+                      {loc.country_code ? `, ${loc.country_code}` : ''}
+                    </span>
+                    <span className="muted small">
+                      {tzCity(loc.timezone)} {t('location.time')} · {loc.currency}
+                    </span>
                   </span>
                 </span>
                 {!disabled && (

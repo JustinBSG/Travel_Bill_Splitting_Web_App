@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { useFmt } from '../../app/useFmt'
 import { useToast } from '../../app/ui/toast'
-import { Banner, ErrorBox, PageHeader } from '../../app/ui/common'
+import { Avatar, Banner, ErrorBox, PageHeader } from '../../app/ui/common'
 import { Icon } from '../../app/ui/Icon'
 import { Modal } from '../../app/ui/Modal'
 import { currencyDecimals, knownCurrencies } from '../../lib/currencies'
@@ -22,6 +22,7 @@ import {
   minorToMajorString,
   parseMajorInput,
   splitEqualPreview,
+  toHkdCents,
   toMinor,
   toRate,
 } from '../../lib/money'
@@ -99,7 +100,7 @@ function ExpenseForm({ existing, originPage, onReloadLatest }: FormProps) {
   const navigate = useNavigate()
   const labels = usePageLabels()
   const data = useTripData()
-  const { trip, me, activeMembers, memberById, locked, tzForDate, currencyForDate, reload } = data
+  const { trip, me, members, activeMembers, memberById, locked, tzForDate, currencyForDate, rateFor, reload } = data
 
   // ---- initial state (read once at mount) ----
   const [init] = useState(() => {
@@ -204,6 +205,10 @@ function ExpenseForm({ existing, originPage, onReloadLatest }: FormProps) {
   const tz = existing && date === existing.local_date ? existing.timezone : tzForDate(date)
   const decimals = currencyDecimals(currency)
   const parsed = parseMajorInput(amountText, currency)
+  // Live "≈ HK$" hint only; the server locks the real rate on save.
+  const hintRate = parsed.ok && currency !== HKD ? rateFor(currency) : null
+  const hkdHint = hintRate && parsed.ok ? toHkdCents(parsed.minor, currency, hintRate) : null
+  const avatarIndex = (id: string) => Math.max(0, members.findIndex((m) => m.id === id))
 
   const payerOptions = useMemo(() => {
     const list = activeMembers.slice()
@@ -432,44 +437,51 @@ function ExpenseForm({ existing, originPage, onReloadLatest }: FormProps) {
               {submitted && errors.title && <span className="error-text">{t('form.required')}</span>}
             </label>
 
-            <div className="row-gap">
-              <label className="field grow">
-                <span>{t('form.amount')}</span>
+            <div className="field">
+              <label htmlFor="amount-input" className="field-label">
+                {t('form.amount')}
+              </label>
+              <div className="amount-row">
+                <label className="currency-field">
+                  <span className="sr-only">{t('form.currency')}</span>
+                  <select
+                    value={currency}
+                    onChange={(e) => {
+                      setCurrency(e.target.value)
+                      setCurrencyManual(true)
+                    }}
+                  >
+                    {allCurrencies.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                  <Icon name="chevronDown" size={18} />
+                </label>
                 <input
+                  id="amount-input"
+                  className="amount-input"
                   inputMode={decimals > 0 ? 'decimal' : 'numeric'}
                   value={amountText}
                   onChange={(e) => setAmountText(e.target.value)}
                   placeholder={decimals > 0 ? `0.${'0'.repeat(decimals)}` : '0'}
                   aria-invalid={submitted && errors.amount}
                 />
-                {(submitted || (amountText && !parsed.ok)) && !parsed.ok && (
-                  <span className="error-text">
-                    {parsed.error === 'decimals'
-                      ? decimals === 0
-                        ? t('form.amountNoDecimals', { currency })
-                        : t('form.amountDecimals', { count: decimals, currency })
-                      : parsed.error === 'empty'
-                        ? t('form.required')
-                        : t('form.amountInvalid')}
-                  </span>
-                )}
-              </label>
-              <label className="field currency-field">
-                <span>{t('form.currency')}</span>
-                <select
-                  value={currency}
-                  onChange={(e) => {
-                    setCurrency(e.target.value)
-                    setCurrencyManual(true)
-                  }}
-                >
-                  {allCurrencies.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              </div>
+              {(submitted || (amountText && !parsed.ok)) && !parsed.ok ? (
+                <span className="error-text">
+                  {parsed.error === 'decimals'
+                    ? decimals === 0
+                      ? t('form.amountNoDecimals', { currency })
+                      : t('form.amountDecimals', { count: decimals, currency })
+                    : parsed.error === 'empty'
+                      ? t('form.required')
+                      : t('form.amountInvalid')}
+                </span>
+              ) : (
+                hkdHint && <span className="muted small align-end">≈ {fmt.money(hkdHint, HKD)}</span>
+              )}
             </div>
 
             {existing && existing.fx_rate_to_hkd !== null && existing.currency !== HKD && (
@@ -499,18 +511,27 @@ function ExpenseForm({ existing, originPage, onReloadLatest }: FormProps) {
               <p className="muted small">{t('form.willMove', { page: labels.withPlace(pageForLocalDate(date, trip)) })}</p>
             )}
 
-            <label className="field">
-              <span>{t('form.paidBy')}</span>
-              <select value={paidBy} onChange={(e) => setPaidBy(e.target.value)}>
+            <fieldset className="field">
+              <legend>{t('form.paidBy')}</legend>
+              <div className="chip-row">
                 {payerOptions.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.display_name}
-                    {m.id === me?.id ? ` (${t('app.you')})` : ''}
-                    {m.removed_at ? ` · ${t('members.left')}` : ''}
-                  </option>
+                  <button
+                    key={m.id}
+                    type="button"
+                    className={`person-chip${paidBy === m.id ? ' active' : ''}${m.user_id ? '' : ' placeholder'}`}
+                    aria-pressed={paidBy === m.id}
+                    onClick={() => setPaidBy(m.id)}
+                  >
+                    <Avatar name={m.display_name} index={avatarIndex(m.id)} placeholder={!m.user_id} />
+                    <span>
+                      {m.display_name}
+                      {m.id === me?.id ? ` (${t('app.you')})` : ''}
+                      {m.removed_at ? ` · ${t('members.left')}` : ''}
+                    </span>
+                  </button>
                 ))}
-              </select>
-            </label>
+              </div>
+            </fieldset>
 
             <fieldset className="field">
               <legend>{t('form.splitMethod')}</legend>
@@ -538,7 +559,7 @@ function ExpenseForm({ existing, originPage, onReloadLatest }: FormProps) {
               <fieldset className="field">
                 <legend>{t('form.exactTitle')}</legend>
                 <p className="muted small">{t('form.exactHint')}</p>
-                <ul className="exact-list">
+                <ul className="exact-list sheet-list">
                   {toOptions.map((m) => {
                     const bad = exact.invalid.includes(m.id)
                     const canAddRest = !!exact.remaining && exact.remaining.isPositive() && !exact.remaining.isZero()
@@ -590,16 +611,18 @@ function ExpenseForm({ existing, originPage, onReloadLatest }: FormProps) {
               </fieldset>
             ) : (
             <fieldset className="field">
-              <legend>{t('form.to')}</legend>
-              <div className="row-gap">
-                <button type="button" className="btn btn-small" onClick={() => setParticipants(activeMembers.map((m) => m.id))}>
-                  {t('form.everyone')}
-                </button>
-                <button type="button" className="btn btn-small" onClick={() => setParticipants([])}>
-                  {t('form.clear')}
-                </button>
-              </div>
-              <ul className="check-list">
+              <legend className="legend-row">
+                <span>{t('form.to')}</span>
+                <span className="row-gap">
+                  <button type="button" className="btn-link" onClick={() => setParticipants(activeMembers.map((m) => m.id))}>
+                    {t('form.everyone')}
+                  </button>
+                  <button type="button" className="btn-link" onClick={() => setParticipants([])}>
+                    {t('form.clear')}
+                  </button>
+                </span>
+              </legend>
+              <ul className="check-list sheet-list">
                 {toOptions.map((m) => (
                   <li key={m.id}>
                     <label className="check-row">
@@ -608,6 +631,7 @@ function ExpenseForm({ existing, originPage, onReloadLatest }: FormProps) {
                         checked={participants.includes(m.id)}
                         onChange={() => toggleParticipant(m.id)}
                       />
+                      <Avatar name={m.display_name} index={avatarIndex(m.id)} placeholder={!m.user_id} size={30} />
                       <span>
                         {m.display_name}
                         {m.id === me?.id ? ` (${t('app.you')})` : ''}
@@ -648,7 +672,7 @@ function ExpenseForm({ existing, originPage, onReloadLatest }: FormProps) {
                     aria-pressed={category === c}
                     onClick={() => setCategory(c)}
                   >
-                    <span aria-hidden>{CATEGORY_META[c].icon}</span>
+                    <Icon name={CATEGORY_META[c].icon} size={20} />
                     <span>{categoryLabel(t, c)}</span>
                   </button>
                 ))}
@@ -681,7 +705,7 @@ function ExpenseForm({ existing, originPage, onReloadLatest }: FormProps) {
                   <span>{t('form.location')}</span>
                   <div className="row-gap">
                     <input className="grow" value={locationText} maxLength={200} onChange={(e) => setLocationText(e.target.value)} />
-                    <button type="button" className="btn" onClick={fillMyLocation} disabled={geoBusy} aria-label={t('form.useLocation')}>
+                    <button type="button" className="btn btn-icon" onClick={fillMyLocation} disabled={geoBusy} aria-label={t('form.useLocation')}>
                       <Icon name="pin" size={18} />
                     </button>
                   </div>

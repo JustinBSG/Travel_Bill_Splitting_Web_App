@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { Navigate, useSearchParams } from 'react-router'
 import { InstallPrompt } from '../../app/InstallPrompt'
 import { isIOS, isStandalone } from '../../app/install'
-import { FullPageSpinner } from '../../app/ui/common'
+import { FullPageSpinner, Seal } from '../../app/ui/common'
+import { Icon } from '../../app/ui/Icon'
 import { setLanguage } from '../../lib/i18n'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from './AuthContext'
@@ -92,7 +93,7 @@ export function LoginPage() {
     <div className="login">
       <div className="login-card">
         <div className="login-brand">
-          <img src="/pwa-192x192.png" alt="" width={72} height={72} />
+          <Seal size={72} />
           <h1>{t('app.name')}</h1>
           <p className="muted">{t('auth.tagline')}</p>
         </div>
@@ -105,13 +106,13 @@ export function LoginPage() {
 
         {step === 'choose' && (
           <div className="stack">
-            <button type="button" className="btn btn-primary btn-block" onClick={() => setStep('email')}>
-              {t('auth.emailCode')}
+            <button type="button" className="btn btn-primary btn-block btn-large" onClick={() => setStep('email')}>
+              <Icon name="mail" size={20} /> {t('auth.emailCode')}
             </button>
-            <button type="button" className="btn btn-block" disabled={busy} onClick={() => oauth('google')}>
+            <button type="button" className="btn btn-block btn-large" disabled={busy} onClick={() => oauth('google')}>
               {t('auth.google')}
             </button>
-            <button type="button" className="btn btn-block" disabled={busy} onClick={() => oauth('apple')}>
+            <button type="button" className="btn btn-block btn-large" disabled={busy} onClick={() => oauth('apple')}>
               {t('auth.apple')}
             </button>
             {iosPwa && <p className="muted small">{t('auth.iosOauthHint')}</p>}
@@ -178,17 +179,20 @@ export function LoginPage() {
           </form>
         )}
 
-        <div className="lang-switch" role="group" aria-label={t('settings.language')}>
+        <div className="segmented lang-switch" role="group" aria-label={t('settings.language')}>
           <button
             type="button"
-            className={i18n.language === 'en' ? 'chip chip-active' : 'chip'}
+            className={i18n.language === 'en' ? 'active' : ''}
+            aria-pressed={i18n.language === 'en'}
             onClick={() => setLanguage('en')}
           >
             English
           </button>
           <button
             type="button"
-            className={i18n.language === 'zh-Hant' ? 'chip chip-active' : 'chip'}
+            lang="zh-Hant"
+            className={i18n.language === 'zh-Hant' ? 'active' : ''}
+            aria-pressed={i18n.language === 'zh-Hant'}
             onClick={() => setLanguage('zh-Hant')}
           >
             繁體中文

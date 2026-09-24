@@ -39,20 +39,22 @@ export function Banner({ tone = 'info', children }: { tone?: 'info' | 'warn' | '
   return <div className={`banner banner-${tone}`}>{children}</div>
 }
 
-/** Simple page header for non-swipe screens. */
+/** Simple page header for non-swipe screens. `large` = top-level screen title (My trips). */
 export function PageHeader({
   title,
   backTo,
   actions,
+  large,
 }: {
   title: string
   backTo?: string | -1
   actions?: ReactNode
+  large?: boolean
 }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   return (
-    <header className="topbar">
+    <header className={`topbar${large ? ' topbar-large' : ''}`}>
       {backTo !== undefined ? (
         <button
           type="button"
@@ -63,7 +65,7 @@ export function PageHeader({
           <Icon name="back" />
         </button>
       ) : (
-        <span className="topbar-spacer" />
+        !large && <span className="topbar-spacer" />
       )}
       <h1 className="topbar-title">{title}</h1>
       <div className="topbar-actions">{actions}</div>
@@ -80,5 +82,45 @@ export function NotFound() {
         {t('app.goHome')}
       </Link>
     </div>
+  )
+}
+
+/** First letter of a name, for avatars (works for CJK names too). */
+function initial(name: string): string {
+  return (Array.from(name.trim())[0] ?? '?').toUpperCase()
+}
+
+/**
+ * Round initial badge. `index` picks one of four soft tints so people are easy
+ * to tell apart; placeholders (no account yet) get a dashed outline instead.
+ */
+export function Avatar({
+  name,
+  index = 0,
+  placeholder,
+  size = 32,
+}: {
+  name: string
+  index?: number
+  placeholder?: boolean
+  size?: number
+}) {
+  return (
+    <span
+      className={`avatar ${placeholder ? 'avatar-placeholder' : `tint-${(index % 4) + 1}`}`}
+      style={{ width: size, height: size, fontSize: Math.round(size * 0.4) }}
+      aria-hidden
+    >
+      {initial(name)}
+    </span>
+  )
+}
+
+/** The app mark: a hanko-style seal with 分 ("split"). Decorative. */
+export function Seal({ size = 72 }: { size?: number }) {
+  return (
+    <span className="seal" style={{ width: size, height: size, fontSize: Math.round(size * 0.58) }} aria-hidden>
+      分
+    </span>
   )
 }

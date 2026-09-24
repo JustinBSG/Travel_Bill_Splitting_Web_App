@@ -1,8 +1,11 @@
 ==============================================================================
  TRAVEL BILL SPLITTING WEB APP
- Feature Specification & System Design  (Version 1.3)
+ Feature Specification & System Design  (Version 1.4)
  Date: 2026-09-24
  Change log:
+   1.4 (2026-09-24)  Colour theme setting (Washi / Classic) next to
+                     Appearance. Conclusion page labelled "Settle up" and
+                     lists who pays whom first. See 4, 5.16, 5.21.
    1.3 (2026-09-24)  Appearance setting: System / Light / Dark.
                      See 4, 5.21.
    1.2 (2026-09-24)  Language can also be changed from the trip menu.
@@ -133,7 +136,8 @@ App level
   - Login page
   - My Trips (list of trips + "Create trip" + "Join with code")
   - Notifications
-  - Settings (profile name, language, appearance, notification settings)
+  - Settings (profile name, language, appearance, colour theme,
+    notification settings)
 
 Inside a trip (swipe left/right or tab bar), in this order:
 
@@ -151,6 +155,7 @@ Also inside a trip (from a menu):
   - Export CSV
   - Language switch (English / 繁體中文), same as in Settings
   - Appearance switch (System / Light / Dark), same as in Settings
+  - Theme switch (Washi / Classic), same as in Settings
 
 Example: 4-day trip, 12-15 Oct
   Overview | Pre-trip | 12 Oct | 13 Oct | 14 Oct | 15 Oct | Post-trip | Conclusion
@@ -442,6 +447,9 @@ included in balances.
 ------------------------------------------------------------------------------
 5.16 Conclusion page (last page)
 ------------------------------------------------------------------------------
+Shown as "Settle up" (結算) in the tab strip. On screen the sections appear
+in the order people use them: who pays whom (your own payment first), then
+balances, then trip stats.
 Sections
   1. Trip total and stats (see 5.14)
   2. Balances: each member's net amount (+ is owed, - owes)
@@ -515,8 +523,16 @@ Two files per trip:
 - Dates, numbers and currencies formatted for the chosen language.
 
 ------------------------------------------------------------------------------
-5.21 Appearance (light / dark mode)
+5.21 Appearance (light / dark mode) and colour theme
 ------------------------------------------------------------------------------
+Colour theme
+- Options: Washi (default: warm paper, ink-black buttons, one vermilion
+  accent, serif headings) and Classic (the original clean teal look,
+  system fonts). Each works in light and dark.
+- Changeable in Settings and from the trip menu; applies immediately.
+- Saved on the device like Appearance, and applied before first paint.
+
+Appearance
 - Options: System (default, follows the phone's setting live), Light, Dark.
 - Changeable in Settings and from the trip menu; applies immediately.
 - Saved on the device (not in the profile), so each phone can differ.

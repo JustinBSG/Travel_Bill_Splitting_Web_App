@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useFmt } from '../../app/useFmt'
 import { useToast } from '../../app/ui/toast'
 import { ErrorBox } from '../../app/ui/common'
+import { Icon } from '../../app/ui/Icon'
 import { Modal } from '../../app/ui/Modal'
 import { Dec, HKD, toHkdCents } from '../../lib/money'
 import { allocateHkdPayment, type SettlementPiece, type Transfer } from '../../lib/settlement'
@@ -109,17 +110,21 @@ export function MarkPaidDialog({ transfer, view, onClose }: Props) {
       }
     >
       <div className="stack">
-        <p className="transfer-line">
-          {t('conclusion.pays', { from, to })} <strong>{fmt.money(transfer.amount, transfer.currency)}</strong>
-        </p>
+        <div className="transfer-card">
+          <span>{t('conclusion.pays', { from, to })}</span>
+          <strong className="transfer-card-amount">{fmt.money(transfer.amount, transfer.currency)}</strong>
+        </div>
 
         {snapshot.view === 'hkd' ? (
           <>
             <p className="muted small">{t('markPaid.hkdExplain')}</p>
-            <ul className="list compact">
+            <ul className="ledger compact">
               {snapshot.pieces.map((p, i) => (
-                <li key={i} className="list-row">
-                  <span>{t('markPaid.clears', { amount: fmt.money(p.debt_amount, p.debt_currency) })}</span>
+                <li key={i} className="row-between">
+                  <span className="with-icon">
+                    <Icon name="check" size={17} />
+                    {t('markPaid.clears', { amount: fmt.money(p.debt_amount, p.debt_currency) })}
+                  </span>
                   <span className="muted small">
                     {p.debt_currency !== HKD && fmt.money(p.paid_hkd, HKD)}
                   </span>
@@ -130,11 +135,11 @@ export function MarkPaidDialog({ transfer, view, onClose }: Props) {
         ) : transfer.currency === HKD ? null : (
           <fieldset className="field">
             <legend>{t('markPaid.paidIn')}</legend>
-            <label className="check-row">
+            <label className={`radio-card${payIn === 'original' ? ' active' : ''}`}>
               <input type="radio" name="payin" checked={payIn === 'original'} onChange={() => setPayIn('original')} />
               <span>{t('markPaid.inOriginal', { amount: fmt.money(transfer.amount, transfer.currency) })}</span>
             </label>
-            <label className="check-row">
+            <label className={`radio-card${payIn === 'hkd' ? ' active' : ''}`}>
               <input
                 type="radio"
                 name="payin"
@@ -149,7 +154,8 @@ export function MarkPaidDialog({ transfer, view, onClose }: Props) {
               </span>
             </label>
             {payIn === 'hkd' && rate && (
-              <p className="muted small">
+              <p className="muted small with-icon">
+                <Icon name="info" size={16} />
                 {t('markPaid.rateNote', { currency: transfer.currency, rate: rate.toSignificantDigits(6).toString() })}
               </p>
             )}
