@@ -190,7 +190,7 @@ Locked trip (is_locked = true)
 3.6 Expense pages (pre-trip / day / post-trip)
   Pin multi-day expenses that cover this date at the top, labelled
     "Multi-day  12-15 Oct  (Day 2 of 4)"
-  Then that date's single-day expenses, sort by local time
+  Then that date's single-day expenses: all-day ones first, then by local time
   Page total in HKD (exclude soft-deleted; count multi-day once globally
   but show it on each covered page; page total MAY include the multi-day
   amount only on the start date OR show a "included in trip total" note —
@@ -201,7 +201,7 @@ Locked trip (is_locked = true)
   Soft-deleted expenses are hidden
   Empty To -> show "Personal" badge
   Each row:
-    title, category icon, time "23:10 (Tokyo time)"
+    title, category icon, time "23:10 (Tokyo time)" or "All day"
     original amount + HKD  e.g. "3,000 JPY  (HK$ 157.80)"
     if original currency != that date's local currency, also show local
     paid by, split between (AB: list each amount,
@@ -221,8 +221,8 @@ Locked trip (is_locked = true)
 
 3.7 Expense form
   Required: title, amount, currency, paid_by (default me), split method,
-  To (default all current members with removed_at null), date+time,
-  category
+  To (default all current members with removed_at null), date+time
+  (an "All day" checkbox hides the time; sends all_day), category
 
   Split method (toggle, default AA)
     AA  "Split equally": pick the To members; server computes shares.
@@ -291,9 +291,10 @@ Locked trip (is_locked = true)
 3.12 Export CSV
   Client-generated, UTF-8 with BOM (Excel + Chinese)
   File 1: <trip>_expenses.csv
-    date, time, timezone, page, title, category, amount, currency,
-    rate_to_hkd, amount_hkd, paid_by, to_members, share_each,
-    personal (Y/N), multi_day_end, location, note, photo_link
+    date, time (blank if all day), all_day (Y/N), timezone, page, title,
+    category, amount, currency, rate_to_hkd, amount_hkd, paid_by,
+    to_members, share_each, personal (Y/N), multi_day_end, location,
+    note, photo_link
   File 2: <trip>_summary.csv
     member, total_paid_hkd, total_share_hkd, balance_hkd,
     plus who-pays-whom list
@@ -363,7 +364,7 @@ Tables (fields the UI needs)
     id, trip_id, title, category
     amount INTEGER minor units, currency
     paid_by (trip_members.id)
-    occurred_at UTC, timezone, local_date
+    occurred_at UTC, timezone, all_day, local_date
     end_date null unless multi-day
     location_text, lat, lng, photo_path, note
     fx_rate_to_hkd, fx_rate_date, amount_hkd

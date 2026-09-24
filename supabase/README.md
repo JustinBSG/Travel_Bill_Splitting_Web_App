@@ -108,7 +108,7 @@ are rejected.
 | `POST /rest/v1/rpc/set_member_role` `{member_id,role}` · `remove_member` `{member_id}` | admin | The owner can't be changed or removed |
 | `POST /functions/v1/join_trip` `{code}`/`{token}`, `claim_placeholder_id?`, `preview?` | signed in | `{trip_id,member_id,claimed}`. With `preview`: trip + open placeholders, joins nothing |
 | `POST /functions/v1/regenerate_invite` `{trip_id}` | admin | New `{invite_token,invite_code,join_path}`. The old ones die at once |
-| `POST /rest/v1/rpc/save_expense` (body per requirement §5.G) | member | Create when `id` is null, else update (needs `expected_updated_at`). Returns expense + `expense_participants` |
+| `POST /rest/v1/rpc/save_expense` (body per requirement §5.G) | member | Create when `id` is null, else update (needs `expected_updated_at`). Optional `all_day` (omitted on update = unchanged). Returns expense + `expense_participants` |
 | `POST /rest/v1/rpc/soft_delete_expense` `{expense_id,expected_updated_at}` · `restore_expense` `{expense_id}` | member | |
 | `GET /rest/v1/expenses?trip_id=eq.{id}&deleted_at=is.null&select=*,expense_participants(*)` | member | |
 | `POST /rest/v1/settlements` | member | Duplicate `idempotency_key` → 409 (`23505`) |

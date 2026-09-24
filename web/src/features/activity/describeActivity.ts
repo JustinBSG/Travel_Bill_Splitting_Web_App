@@ -1,7 +1,7 @@
 // Human-readable activity log lines from before/after JSON snapshots.
 // Example: "Alex edited 'Dinner': 800 → 900 JPY"
 import type { TFunction } from 'i18next'
-import { formatDateRange, formatDayMonth } from '../../lib/dates'
+import { formatDateRange, formatDayMonth, utcToLocalParts } from '../../lib/dates'
 import { formatMoney } from '../../lib/money'
 import type { ActivityLogRow } from '../../lib/types'
 
@@ -26,6 +26,14 @@ function money(v: unknown, currency: unknown, locale: string): string {
     return formatMoney(v as string | number, s(currency) || 'HKD', locale)
   } catch {
     return `${s(v)} ${s(currency)}`
+  }
+}
+
+function localTime(iso: unknown, tz: unknown): string {
+  try {
+    return utcToLocalParts(s(iso), s(tz)).time
+  } catch {
+    return '?'
   }
 }
 
@@ -66,6 +74,9 @@ function expenseLine(row: ActivityLogRow, ctx: Ctx, actor: string): ActivityLine
   }
   if (changed(b, a, 'category')) parts.push(`${s(b.category)} → ${s(a.category)}`)
   if (changed(b, a, 'end_date')) parts.push(t('activity.multiDayChanged'))
+  if (changed(b, a, 'all_day')) {
+    parts.push(a.all_day ? t('activity.allDayOn') : t('activity.allDayOff', { time: localTime(a.occurred_at, a.timezone) }))
+  }
   if (changed(b, a, 'split_method')) {
     parts.push(a.split_method === 'exact' ? t('activity.splitToExact') : t('activity.splitToEqual'))
   }

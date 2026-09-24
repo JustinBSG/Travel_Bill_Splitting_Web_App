@@ -11,6 +11,7 @@ function e(p: Partial<Expense> & Pick<Expense, 'id' | 'paid_by' | 'amount' | 'cu
     category: 'Food & Drink',
     occurred_at: '2026-10-12T03:00:00Z',
     timezone: 'Asia/Seoul',
+    all_day: false,
     local_date: '2026-10-12',
     end_date: null,
     location_text: null,

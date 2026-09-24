@@ -28,8 +28,10 @@ export function ExpenseRow({ expense: e, page, pageCurrency, pageTz, pinnedOn }:
   const { trip, activeMembers, me, memberName, rateFor } = useTripData()
   const labels = usePageLabels()
 
-  const local = utcToLocalParts(e.occurred_at, e.timezone)
-  const otherTz = e.timezone !== pageTz ? t('expense.localTime', { city: labels.tzLabel(e.timezone, e.local_date) }) : null
+  // All-day rows have no clock time, so no time zone to spell out either.
+  const time = e.all_day ? t('expense.allDay') : utcToLocalParts(e.occurred_at, e.timezone).time
+  const otherTz =
+    !e.all_day && e.timezone !== pageTz ? t('expense.localTime', { city: labels.tzLabel(e.timezone, e.local_date) }) : null
   const personal = e.expense_participants.length === 0
   const participantIds = e.expense_participants.map((p) => p.member_id)
   const everyone =
@@ -57,7 +59,7 @@ export function ExpenseRow({ expense: e, page, pageCurrency, pageTz, pinnedOn }:
       >
         {!pinnedOn && (
           <span className="expense-time">
-            {local.time}
+            {time}
             {otherTz && <span className="expense-tz">{otherTz}</span>}
           </span>
         )}
@@ -85,7 +87,7 @@ export function ExpenseRow({ expense: e, page, pageCurrency, pageTz, pinnedOn }:
             </span>
           )}
           <span className="expense-meta">
-            {pinnedOn && `${local.time}${otherTz ? ` (${otherTz})` : ''} · `}
+            {pinnedOn && `${time}${otherTz ? ` (${otherTz})` : ''} · `}
             {t('expense.paidBy', { name: memberName(e.paid_by) })}
             {!personal && (
               <>

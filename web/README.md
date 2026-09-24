@@ -112,7 +112,7 @@ All calls are isolated in the `*Api.ts` files:
 - **Join** (`features/trips/joinApi.ts`): Edge Function `join_trip` with `preview: true` (trip + open placeholders,
   joins nothing), then `{ token | code, claim_placeholder_id? }`. Errors: `{ error: { code, message } }`.
 - **Expenses** (`features/expenses/expenseApi.ts`): `rpc/save_expense` writes the expense and its participants in
-  one transaction. The server derives `local_date`, locks FX, computes `amount_hkd`, splits AA shares and checks AB
+  one transaction. The server derives `local_date` (an `all_day` expense is stored at the start of that day), locks FX, computes `amount_hkd`, splits AA shares and checks AB
   sums. `expected_updated_at` is the `updated_at` string exactly as received (optimistic lock → `conflict_updated_at`).
   Soft delete / restore: `rpc/soft_delete_expense`, `rpc/restore_expense`.
 - **Settlements**: plain insert with `idempotency_key` (a replay is a 409 `23505`, shown as "already recorded").

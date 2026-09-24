@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   addDays,
+  allDayUtcIso,
   coversDate,
   defaultDateForPage,
   diffDays,
@@ -81,6 +82,13 @@ describe('multi-day', () => {
     expect(expensesForPage([lunch, early], '2026-10-13', trip).single.map((x) => x.id)).toEqual(['early', 'lunch'])
   })
 
+  it('puts all-day expenses before timed ones', () => {
+    // 00:30 in Tokyo is an earlier instant than the start of 13 Oct in Hong Kong; all-day still leads
+    const pass = { ...e('pass', '2026-10-13', null, '2026-10-12T16:00:00Z'), all_day: true }
+    const night = e('night', '2026-10-13', null, '2026-10-12T15:30:00Z')
+    expect(expensesForPage([lunch, night, pass], '2026-10-13', trip).single.map((x) => x.id)).toEqual(['pass', 'night', 'lunch'])
+  })
+
   it('pre-trip page gets expenses before start', () => {
     const flight = e('flight', '2026-09-01')
     const p = expensesForPage([flight, hotel], 'pre', trip)
@@ -96,6 +104,12 @@ describe('timezones', () => {
     // Same instant is still 13 Oct in Hong Kong but would be a different wall time.
     expect(utcToLocalParts('2026-10-13T14:10:00.000Z', 'Asia/Hong_Kong')).toEqual({ date: '2026-10-13', time: '22:10' })
     expect(tzCity('America/New_York')).toBe('New York')
+  })
+
+  it('sends noon for all-day expenses, so a skipped midnight cannot move the date', () => {
+    expect(allDayUtcIso('2026-10-13', 'Asia/Tokyo')).toBe('2026-10-13T03:00:00.000Z')
+    // Santiago has no 00:00 on 6 Sep 2026 (clocks jump to 01:00)
+    expect(utcToLocalParts(allDayUtcIso('2026-09-06', 'America/Santiago'), 'America/Santiago').date).toBe('2026-09-06')
   })
 
   it('computes countdown / day X of N in each day timezone', () => {

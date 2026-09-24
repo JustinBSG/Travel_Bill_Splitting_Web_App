@@ -24,6 +24,8 @@ export interface ExpenseInput {
   /** ISO instant with offset; the server derives local_date from it + timezone. */
   occurred_at: string
   timezone: string
+  /** No time of day: the server keeps local_date and stores its start. */
+  all_day: boolean
   end_date: ISODate | null
   location_text: string | null
   latitude: number | null

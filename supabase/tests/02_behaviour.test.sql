@@ -6,7 +6,7 @@
 -- are rolled back too). Acts as a signed-in user the way PostgREST does:
 -- role authenticated + request.jwt.claims.
 begin;
-select plan(40);
+select plan(42);
 
 -- --------------------------------------------------------------------- helpers
 create temp table t (k text primary key, v text);
@@ -122,6 +122,12 @@ select results_eq(
   'the AA remainder goes to the lowest trip_members.id');
 select is((select local_date from public.expenses where id = pg_temp.id('e_aa')), current_date + 30,
   'local_date comes from occurred_at in the expense time zone');
+
+insert into t select 'e_allday', public.save_expense(pg_temp.expense('{"title": "Day pass", "all_day": true}')) ->> 'id';
+select is((select all_day from public.expenses where id = pg_temp.id('e_aa')), false,
+  'expenses have a set time unless marked all day');
+select is((select occurred_at at time zone timezone from public.expenses where id = pg_temp.id('e_allday')),
+  (current_date + 30)::timestamp, 'an all-day expense is stored at the start of its local day');
 
 select throws_like($$ select public.save_expense(pg_temp.expense(jsonb_build_object(
     'split_method', 'exact', 'amount', 12000, 'participants', jsonb_build_array(

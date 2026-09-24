@@ -236,7 +236,7 @@ Share button uses the phone's native share sheet (WhatsApp, etc.).
 ------------------------------------------------------------------------------
 Each page shows:
   - Multi-day expenses covering that date, pinned at the top with a label
-  - Then that date's expenses, sorted by time
+  - Then that date's expenses, sorted by time (all-day ones first)
   - Page total in HKD
   - Big "+" button to add an expense
 
@@ -269,7 +269,8 @@ Required
                  AB: an amount for each person who had something
                      (payer included); blank = not involved; the amounts
                      must add up exactly to the total before saving
-  - Date & time  (defaults to current page's date + current time)
+  - Date & time  (defaults to current page's date + current time;
+                  tick "All day" to leave the time out)
   - Category     (see 5.14)
 
 Optional
@@ -279,7 +280,7 @@ Optional
   - Note
 
 Display of each expense
-  - Title, category icon, time
+  - Title, category icon, time (or "All day")
   - Amount in original currency AND in HKD
     e.g. "3,000 JPY  (HK$ 157.80)"
   - Paid by, split between (AB also lists each person's amount,
@@ -384,6 +385,7 @@ Time zones
   - Stored as UTC plus the timezone, so the expense always stays on the
     correct date page for everyone, wherever their phone is.
   - Shown as local time of that location, e.g. "23:10 (Tokyo time)".
+  - An all-day expense has a date but no time and shows "All day".
 
 Multi-day expenses (e.g. hotel 4 nights, JR Pass)
   - Toggle "Multi-day" and set start and end date.
@@ -503,9 +505,10 @@ Each type can be turned on/off in Settings.
 ------------------------------------------------------------------------------
 Two files per trip:
   1. <trip>_expenses.csv
-     date, time, timezone, page, title, category, amount, currency,
-     rate_to_hkd, amount_hkd, paid_by, to_members, share_each,
-     personal (Y/N), multi_day_end, location, note, photo_link
+     date, time (blank if all day), all_day (Y/N), timezone, page, title,
+     category, amount, currency, rate_to_hkd, amount_hkd, paid_by,
+     to_members, share_each, personal (Y/N), multi_day_end, location,
+     note, photo_link
   2. <trip>_summary.csv
      member, total_paid_hkd, total_share_hkd, balance_hkd,
      plus the "who pays whom" list
@@ -567,7 +570,7 @@ expenses
   id, trip_id, title, category,
   amount (integer, smallest currency unit), currency,
   paid_by (trip_members.id),
-  occurred_at (UTC timestamp), timezone, local_date,
+  occurred_at (UTC timestamp), timezone, all_day (bool), local_date,
   end_date (NULL unless multi-day),
   location_text, latitude, longitude (optional),
   photo_path (optional), note,

@@ -55,6 +55,7 @@ export interface DatedExpense {
   local_date: ISODate
   end_date: ISODate | null
   occurred_at: string
+  all_day?: boolean
 }
 
 export function isMultiDay(e: DatedExpense): boolean {
@@ -77,7 +78,7 @@ export function multiDayPosition(e: DatedExpense, d: ISODate): { index: number; 
 export interface PageExpenses<E> {
   /** Multi-day expenses covering this page, pinned at the top. */
   pinned: E[]
-  /** Single-day expenses of this page sorted by time. */
+  /** Single-day expenses of this page: all-day ones first, then by time. */
   single: E[]
   /**
    * Expenses counted in THIS page's total: those whose local_date belongs to
@@ -91,7 +92,7 @@ export function expensesForPage<E extends DatedExpense>(
   page: ExpensePageKey,
   trip: TripRange,
 ): PageExpenses<E> {
-  const byTime = (a: E, b: E) => a.occurred_at.localeCompare(b.occurred_at)
+  const byTime = (a: E, b: E) => Number(!!b.all_day) - Number(!!a.all_day) || a.occurred_at.localeCompare(b.occurred_at)
   if (page === 'pre' || page === 'post') {
     const own = expenses.filter((e) => pageForLocalDate(e.local_date, trip) === page)
     return {
@@ -123,6 +124,16 @@ export function timeNowIn(tz: string, now: Date = new Date()): string {
 /** Wall-clock date + time in `tz` -> UTC ISO string. */
 export function zonedToUtcIso(date: ISODate, time: string, tz: string): string {
   return fromZonedTime(`${date}T${time.length === 5 ? `${time}:00` : time}`, tz).toISOString()
+}
+
+/**
+ * occurred_at to send for an all-day expense. Any instant inside the local day
+ * works (the server keeps that date and stores its start). Noon, because no
+ * daylight-saving change skips it: a skipped midnight would turn into 23:00 of
+ * the day before.
+ */
+export function allDayUtcIso(date: ISODate, tz: string): string {
+  return zonedToUtcIso(date, '12:00', tz)
 }
 
 export function utcToLocalParts(iso: string, tz: string): { date: ISODate; time: string } {

@@ -8,6 +8,7 @@ import { Icon } from '../../app/ui/Icon'
 import { Modal } from '../../app/ui/Modal'
 import { currencyDecimals, knownCurrencies } from '../../lib/currencies'
 import {
+  allDayUtcIso,
   defaultDateForPage,
   isISODate,
   pageForLocalDate,
@@ -124,7 +125,9 @@ function ExpenseForm({ existing, originPage, onReloadLatest }: FormProps) {
               )
             : ({} as Record<string, string>),
         date: existing.local_date,
-        time: local.time,
+        // An all-day expense has no time to edit; unticking starts from now, as for a new one.
+        time: existing.all_day ? timeNowIn(existing.timezone) : local.time,
+        allDay: existing.all_day,
         category: existing.category,
         multiDay: !!existing.end_date,
         endDate: existing.end_date ?? existing.local_date,
@@ -146,6 +149,7 @@ function ExpenseForm({ existing, originPage, onReloadLatest }: FormProps) {
       exactTexts: {} as Record<string, string>,
       date,
       time: timeNowIn(tzForDate(date)),
+      allDay: false,
       category: 'Food & Drink' as Category,
       multiDay: false,
       endDate: date,
@@ -166,6 +170,7 @@ function ExpenseForm({ existing, originPage, onReloadLatest }: FormProps) {
   const [exactTexts, setExactTexts] = useState<Record<string, string>>(init.exactTexts)
   const [date, setDate] = useState(init.date)
   const [time, setTime] = useState(init.time)
+  const [allDay, setAllDay] = useState(init.allDay)
   const [category, setCategory] = useState<Category>(init.category)
   const [multiDay, setMultiDay] = useState(init.multiDay)
   const [endDate, setEndDate] = useState(init.endDate)
@@ -307,7 +312,7 @@ function ExpenseForm({ existing, originPage, onReloadLatest }: FormProps) {
     title: !title.trim(),
     amount: !parsed.ok,
     date: !isISODate(date),
-    time: !/^\d{2}:\d{2}$/.test(time),
+    time: !allDay && !/^\d{2}:\d{2}$/.test(time),
     paidBy: !paidBy,
     endDate: multiDay && (!isISODate(endDate) || endDate <= date),
     split: splitMethod === 'exact' && !isExactSplitComplete(exact),
@@ -329,8 +334,9 @@ function ExpenseForm({ existing, originPage, onReloadLatest }: FormProps) {
         amount: parsed.minor,
         currency,
         paid_by: paidBy,
-        occurred_at: zonedToUtcIso(date, time, tz),
+        occurred_at: allDay ? allDayUtcIso(date, tz) : zonedToUtcIso(date, time, tz),
         timezone: tz,
+        all_day: allDay,
         end_date: multiDay ? endDate : null,
         location_text: locationText.trim() || null,
         latitude: coords.lat,
@@ -499,13 +505,19 @@ function ExpenseForm({ existing, originPage, onReloadLatest }: FormProps) {
                 <span>{t('form.date')}</span>
                 <input type="date" value={date} onChange={(e) => changeDate(e.target.value)} aria-invalid={submitted && errors.date} />
               </label>
-              <label className="field grow">
-                <span>
-                  {t('form.time')} <span className="muted small">({t('expense.localTime', { city: labels.tzLabel(tz, date) })})</span>
-                </span>
-                <input type="time" value={time} onChange={(e) => setTime(e.target.value)} aria-invalid={submitted && errors.time} />
-              </label>
+              {!allDay && (
+                <label className="field grow">
+                  <span>
+                    {t('form.time')} <span className="muted small">({t('expense.localTime', { city: labels.tzLabel(tz, date) })})</span>
+                  </span>
+                  <input type="time" value={time} onChange={(e) => setTime(e.target.value)} aria-invalid={submitted && errors.time} />
+                </label>
+              )}
             </div>
+            <label className="check-row">
+              <input type="checkbox" checked={allDay} onChange={(e) => setAllDay(e.target.checked)} />
+              <span>{t('form.allDay')}</span>
+            </label>
             {isISODate(date) && pageForLocalDate(date, trip) !== originPage && (
               <p className="muted small">{t('form.willMove', { page: labels.withPlace(pageForLocalDate(date, trip)) })}</p>
             )}

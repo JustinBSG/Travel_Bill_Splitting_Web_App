@@ -95,6 +95,8 @@ export interface Expense {
   paid_by: Id
   occurred_at: string
   timezone: string
+  /** No time of day; the server stores occurred_at as the start of local_date. */
+  all_day: boolean
   local_date: ISODate
   end_date: ISODate | null
   location_text: string | null

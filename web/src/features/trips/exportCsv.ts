@@ -32,7 +32,7 @@ export async function buildTripCsvFiles(data: TripData, t: TFunction): Promise<F
 
   const expenseRows: Cell[][] = [
     [
-      'date', 'time', 'timezone', 'page', 'title', 'category', 'amount', 'currency',
+      'date', 'time', 'all_day', 'timezone', 'page', 'title', 'category', 'amount', 'currency',
       'rate_to_hkd', 'amount_hkd', 'paid_by', 'to_members', 'share_each',
       'personal', 'multi_day_end', 'location', 'note', 'photo_link',
     ],
@@ -41,7 +41,8 @@ export async function buildTripCsvFiles(data: TripData, t: TFunction): Promise<F
     const personal = e.expense_participants.length === 0
     expenseRows.push([
       e.local_date,
-      utcToLocalParts(e.occurred_at, e.timezone).time,
+      e.all_day ? '' : utcToLocalParts(e.occurred_at, e.timezone).time,
+      e.all_day ? 'Y' : 'N',
       e.timezone,
       pageName(e.local_date),
       e.title,

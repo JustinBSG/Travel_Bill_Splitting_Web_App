@@ -359,6 +359,79 @@ test('save_expense: page date follows the stored zone; past dates lock that dayâ
   assert.equal(ancient.fx_rate_date, day(-60))
 })
 
+test('save_expense: all-day expenses keep their date, store its start, survive older apps', async () => {
+  // any instant inside the local day picks the page; the stored instant is that day's 00:00
+  const pass = await expense(U.bob, {
+    title: 'Day pass',
+    category: 'Transport',
+    amount: 15000,
+    paid_by: M.bob,
+    all_day: true,
+    occurred_at: `${day(21)}T23:59:00+09:00`,
+    participants: [{ member_id: M.alice }, { member_id: M.bob }],
+  })
+  E.pass = pass.id
+  assert.equal(pass.all_day, true)
+  assert.equal(pass.local_date, day(21))
+  assert.equal(new Date(pass.occurred_at).toISOString(), `${day(20)}T15:00:00.000Z`) // 00:00 in Seoul
+  const [taxi] = await db.as(U.bob, 'select all_day from public.expenses where id = $1', [E.taxi])
+  assert.equal(taxi.all_day, false) // default: a set time
+
+  // an app from before all_day edits it: still all day, the time it sends is ignored
+  const [row] = await db.as(U.bob, `select *, to_json(updated_at)#>>'{}' as ts from public.expenses where id = $1`, [E.pass])
+  const body = {
+    id: E.pass,
+    trip_id: trip.id,
+    title: 'Day pass (T-money)',
+    category: row.category,
+    amount: row.amount,
+    currency: row.currency,
+    paid_by: row.paid_by,
+    split_method: 'equal',
+    occurred_at: `${day(21)}T14:30:00+09:00`,
+    timezone: row.timezone,
+    expected_updated_at: row.ts,
+    participants: [{ member_id: M.alice }, { member_id: M.bob }],
+  }
+  const kept = await db.rpc(U.bob, 'save_expense', body)
+  assert.equal(kept.all_day, true)
+  assert.equal(new Date(kept.occurred_at).toISOString(), `${day(20)}T15:00:00.000Z`)
+
+  // all_day: false gives it a time again; the switch is in the logged snapshots
+  const [{ ts }] = await db.as(U.bob, `select to_json(updated_at)#>>'{}' as ts from public.expenses where id = $1`, [E.pass])
+  const timed = await db.rpc(U.bob, 'save_expense', { ...body, expected_updated_at: ts, all_day: false })
+  assert.equal(timed.all_day, false)
+  assert.equal(new Date(timed.occurred_at).toISOString(), `${day(21)}T05:30:00.000Z`) // 14:30 in Seoul
+  const [log] = await db.admin(
+    `select before->'all_day' as b, after->'all_day' as a from public.activity_log
+     where entity_id = $1 and action = 'update' order by created_at desc limit 1`,
+    [E.pass],
+  )
+  assert.deepEqual(log, { b: true, a: false })
+
+  // Santiago skips 00:00 on 6 Sep 2026 (clocks jump to 01:00): the date is kept
+  const gap = await expense(U.bob, {
+    title: 'Wine tour',
+    category: 'Activities & Tickets',
+    currency: 'HKD',
+    amount: 5000,
+    paid_by: M.bob,
+    timezone: 'America/Santiago',
+    all_day: true,
+    occurred_at: '2026-09-06T12:00:00-03:00',
+    participants: [{ member_id: M.bob }],
+  })
+  assert.equal(gap.local_date, '2026-09-06')
+  const [{ local }] = await db.admin(`select (occurred_at at time zone timezone)::text as local from public.expenses where id = $1`, [gap.id])
+  assert.match(local, /^2026-09-06 0[01]:00:00$/)
+
+  await expectApiError(
+    expense(U.bob, { title: 'x', amount: 100, paid_by: M.bob, occurred_at: `${day(21)}T12:00:00+09:00`, all_day: 'yes', participants: [] }),
+    'validation_error',
+    422,
+  )
+})
+
 test('optimistic lock, FX only re-locked on amount / currency / date change, AA <-> AB switch', async () => {
   const [hotel] = await db.as(U.bob, 'select * from public.expenses where id = $1', [E.hotel])
   const stale = { ...hotel, expected_updated_at: '2000-01-01T00:00:00+00:00' }

@@ -20,7 +20,7 @@ export const TRIP_COLUMNS =
 export const DAY_COLUMNS = 'trip_id, date, location_name, country_code, latitude, longitude, timezone, currency'
 export const MEMBER_COLUMNS = 'id, trip_id, user_id, display_name, role, joined_at, removed_at'
 export const EXPENSE_COLUMNS =
-  'id, trip_id, title, category, amount, currency, paid_by, occurred_at, timezone, local_date, end_date, ' +
+  'id, trip_id, title, category, amount, currency, paid_by, occurred_at, timezone, all_day, local_date, end_date, ' +
   'location_text, latitude, longitude, photo_path, note, fx_rate_to_hkd, fx_rate_date, amount_hkd, ' +
   'currency_manually_set, split_method, created_by, created_at, updated_at, deleted_at, ' +
   'expense_participants(member_id, share_amount)'

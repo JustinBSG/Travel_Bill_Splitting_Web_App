@@ -207,6 +207,7 @@ Enums as text + check constraints (stable for PostgREST).
   paid_by               uuid NOT NULL REFERENCES trip_members(id)
   occurred_at           timestamptz NOT NULL
   timezone              text NOT NULL
+  all_day               boolean NOT NULL DEFAULT false  -- no time of day
   local_date            date NOT NULL           -- server-computed
   end_date              date NULL               -- multi-day inclusive
   location_text         text NULL
@@ -522,6 +523,7 @@ POST /rest/v1/rpc/save_expense
       "split_method": "equal" | "exact",
       "occurred_at": "2026-10-13T14:10:00+09:00",
       "timezone": "Asia/Tokyo",
+      "all_day": false,                 -- optional, see step 4
       "end_date": null | "2026-10-15",
       "location_text": null,
       "latitude": null,
@@ -543,6 +545,9 @@ POST /rest/v1/rpc/save_expense
     3. If id is set: UPDATE only if updated_at = expected_updated_at
        else return 409 conflict with current row (lost update).
     4. Derive local_date from occurred_at AT TIME ZONE timezone.
+       all_day (omitted = false on create, unchanged on update): when
+       true, store occurred_at as the start of local_date in timezone;
+       the time part means nothing.
     5. Lock FX:
          if local_date < current date in Asia/Hong_Kong
             use fx_rates for that local_date
