@@ -2,6 +2,7 @@
 // Design: the "split" coin (two half circles) in the Washi theme colours:
 // vermilion (shu) square, left half paper (kinari), right half sumi ink.
 // Keep in sync with public/favicon.svg and the Washi tokens in src/index.css.
+// (public/favicon-classic.svg is the browser-tab icon for the Classic theme.)
 // Run: node scripts/generate-icons.mjs
 import { writeFileSync, mkdirSync } from 'node:fs'
 import { deflateSync } from 'node:zlib'

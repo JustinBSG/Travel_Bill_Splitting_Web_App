@@ -29,6 +29,8 @@
         var colors = { washi: ['#f3eee3', '#1b1916'], classic: ['#ffffff', '#111827'] }
         var m = document.querySelector('meta[name="theme-color"]')
         if (m) m.setAttribute('content', colors[pal][dark ? 1 : 0])
+        var icon = document.querySelector('link[rel="icon"]')
+        if (icon) icon.setAttribute('href', pal === 'classic' ? '/favicon-classic.svg' : '/favicon.svg')
       })()
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />

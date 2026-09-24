@@ -14,6 +14,8 @@ const THEME_COLOR: Record<Palette, { light: string; dark: string }> = {
   washi: { light: '#f3eee3', dark: '#1b1916' },
   classic: { light: '#ffffff', dark: '#111827' },
 }
+/** Browser-tab icon per colour theme. The installed home-screen icon is fixed (manifest). */
+const FAVICON: Record<Palette, string> = { washi: '/favicon.svg', classic: '/favicon-classic.svg' }
 
 function readPref(): ThemePref {
   try {
@@ -42,6 +44,7 @@ function apply() {
   root.setAttribute('data-theme', theme)
   root.setAttribute('data-palette', palette)
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', THEME_COLOR[palette][theme])
+  document.querySelector('link[rel="icon"]')?.setAttribute('href', FAVICON[palette])
 }
 
 let pref: ThemePref = readPref()
