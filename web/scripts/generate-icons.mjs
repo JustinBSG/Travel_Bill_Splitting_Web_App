@@ -1,5 +1,7 @@
 // Generates the PWA PNG icons into web/public with no image dependencies.
-// Design: teal square, white "split" coin (left half white, right half mint).
+// Design: the "split" coin (two half circles) in the Washi theme colours:
+// vermilion (shu) square, left half paper (kinari), right half sumi ink.
+// Keep in sync with public/favicon.svg and the Washi tokens in src/index.css.
 // Run: node scripts/generate-icons.mjs
 import { writeFileSync, mkdirSync } from 'node:fs'
 import { deflateSync } from 'node:zlib'
@@ -9,9 +11,9 @@ import { fileURLToPath } from 'node:url'
 const outDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'public')
 mkdirSync(outDir, { recursive: true })
 
-const BG = [15, 118, 110] // #0f766e
-const LEFT = [255, 255, 255]
-const RIGHT = [153, 246, 228] // #99f6e4
+const BG = [192, 70, 42] // #c0462a  --accent (shu)
+const LEFT = [251, 248, 242] // #fbf8f2  --sheet (kinari paper)
+const RIGHT = [38, 34, 29] // #26221d  --ink (sumi)
 
 const crcTable = new Uint32Array(256).map((_, n) => {
   let c = n
