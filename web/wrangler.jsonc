@@ -5,6 +5,10 @@
   // becomes https://travel-bill-splitting-web-app.<your-subdomain>.workers.dev
   "name": "travel-bill-splitting-web-app",
   "compatibility_date": "2026-09-01",
+  // Serve Previews at https://<preview-name>-<worker>.<subdomain>.workers.dev
+  // (e.g. uat-…). Worker-level setting: applied by `wrangler deploy` on main,
+  // or switch it on in Settings -> Domains & Routes.
+  "preview_urls": true,
   "assets": {
     "directory": "./dist",
     // client-side routes (/join/<token>, /trips/<id>/...) get index.html with 200

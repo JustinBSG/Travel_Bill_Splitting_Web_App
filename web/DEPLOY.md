@@ -160,7 +160,8 @@ npx wrangler preview --name uat
 - **Previews:** each non-production build prints its preview URL in the build log and under
   **Deployments** (or **Versions**). If branch aliases are enabled, `uat` gets a stable address
   like `https://uat-travel-bill-splitting-web-app.<subdomain>.workers.dev`.
-- If **Preview URLs** are off: **Settings → Domains & Routes** → enable **Preview URLs**.
+- **Preview URLs must be on:** **Settings → Domains & Routes** → enable **Preview URLs** (or
+  *Version URLs*). Otherwise preview builds upload fine but have no address.
 
 ## 7. Custom domain (optional)
 
@@ -243,6 +244,7 @@ the backend to production, then merge `uat` into `main`.
 | Symptom | Fix |
 |---|---|
 | Build log: `missing build variables: PROD_VITE_...` | Add the variables in section 4 under **Settings → Build → Variables and secrets**, then retry |
+| Preview build succeeds but says `This Preview deployment has no active URLs` | Worker → **Settings → Domains & Routes** → enable **Preview URLs** (`"preview_urls": true` in `web/wrangler.jsonc` keeps it on after production deploys) |
 | Preview build: `missing a previews block` | `web/wrangler.jsonc` must contain `"previews": {}` (it does in this repo; pull the latest `uat`) |
 | Build log: Worker name mismatch | The dashboard Worker name must equal `"name"` in `web/wrangler.jsonc` |
 | Build log: `package.json` not found / `wrangler.jsonc` not found | Root directory / Path must be `web` |
