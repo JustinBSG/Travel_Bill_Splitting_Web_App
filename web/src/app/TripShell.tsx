@@ -12,7 +12,7 @@ import { useTripData } from '../features/trips/TripDataContext'
 import { buildTripCsvFiles, deliverFiles } from '../features/trips/exportCsv'
 import { usePageLabels } from '../features/trips/usePageLabels'
 import { useTripWeather } from '../features/trips/useTripWeather'
-import { todayIn, type PageKey } from '../lib/dates'
+import { isISODate, pageForLocalDate, todayIn, type PageKey } from '../lib/dates'
 import { useFmt } from './useFmt'
 import { useReducedMotion } from './useReducedMotion'
 import { useToast } from './ui/toast'
@@ -136,7 +136,12 @@ export function TripShell() {
     }
   }
 
-  if (index < 0) return <Navigate to={`/trips/${trip.id}/overview`} replace />
+  if (index < 0) {
+    // A date outside the trip (e.g. from a push link) lands on its pre/post page.
+    const dated = isISODate(pageKey) ? pageForLocalDate(pageKey, trip) : null
+    const to = dated && pages.includes(dated) ? dated : 'overview'
+    return <Navigate to={`/trips/${trip.id}/${to}`} replace />
+  }
 
   /** Text tab, or a tear-off-calendar tab (weekday over the date) for trip days. */
   const tab = (k: PageKey, active: boolean) => {
