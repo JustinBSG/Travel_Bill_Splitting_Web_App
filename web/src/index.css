@@ -714,6 +714,23 @@ svg.icon {
 .field-inline > span:first-child {
   margin: 0;
 }
+/* A field label with a small action on the right, e.g. Time + "Now". The action
+   keeps its tap area via padding but negative margins stop it growing the row,
+   so the label lines up with its neighbours' plain labels. */
+.field-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-bottom: 8px;
+}
+.field-head .btn-link {
+  min-height: 0;
+  margin: -8px -6px;
+  font-size: 0.88rem;
+}
 .legend-row {
   display: flex;
   align-items: center;

@@ -249,6 +249,7 @@ const en = {
     lockedRate: 'Locked rate: 1 {{currency}} = HK$ {{rate}} ({{date}})',
     date: 'Date',
     time: 'Time',
+    timeNow: 'Now',
     allDay: 'All day (no specific time)',
     willMove: 'After saving this will move to {{page}}.',
     paidBy: 'Paid by',

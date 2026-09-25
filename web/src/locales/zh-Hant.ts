@@ -251,6 +251,7 @@ const zhHant: LocaleShape<typeof en> = {
     lockedRate: '已鎖定匯率：1 {{currency}} = HK$ {{rate}}（{{date}}）',
     date: '日期',
     time: '時間',
+    timeNow: '現在',
     allDay: '全日（不指定時間）',
     willMove: '儲存後將移至 {{page}}。',
     paidBy: '付款人',

@@ -279,6 +279,13 @@ function ExpenseForm({ existing, originPage, onReloadLatest }: FormProps) {
     if (multiDay && d > endDate) setEndDate(d)
   }
 
+  // Native pickers' own Reset/Clear (iOS wheel "Reset", Android "Clear") empty the
+  // field; treat an empty time as "now". Touch pickers apply it at once; on desktop
+  // wait for blur so clearing a segment while typing doesn't snap to now mid-edit.
+  function changeTime(v: string) {
+    setTime(v === '' && window.matchMedia('(pointer: coarse)').matches ? timeNowIn(tz) : v)
+  }
+
   function toggleParticipant(id: string) {
     setParticipants((xs) => (xs.includes(id) ? xs.filter((x) => x !== id) : [...xs, id]))
   }
@@ -506,12 +513,24 @@ function ExpenseForm({ existing, originPage, onReloadLatest }: FormProps) {
                 <input type="date" value={date} onChange={(e) => changeDate(e.target.value)} aria-invalid={submitted && errors.date} />
               </label>
               {!allDay && (
-                <label className="field grow">
-                  <span>
-                    {t('form.time')} <span className="muted small">({t('expense.localTime', { city: labels.tzLabel(tz, date) })})</span>
-                  </span>
-                  <input type="time" value={time} onChange={(e) => setTime(e.target.value)} aria-invalid={submitted && errors.time} />
-                </label>
+                <div className="field grow">
+                  <div className="field-head">
+                    <label htmlFor="expense-time">
+                      {t('form.time')} <span className="muted small">({t('expense.localTime', { city: labels.tzLabel(tz, date) })})</span>
+                    </label>
+                    <button type="button" className="btn-link" onClick={() => setTime(timeNowIn(tz))}>
+                      {t('form.timeNow')}
+                    </button>
+                  </div>
+                  <input
+                    id="expense-time"
+                    type="time"
+                    value={time}
+                    onChange={(e) => changeTime(e.target.value)}
+                    onBlur={() => time === '' && setTime(timeNowIn(tz))}
+                    aria-invalid={submitted && errors.time}
+                  />
+                </div>
               )}
             </div>
             <label className="check-row">
