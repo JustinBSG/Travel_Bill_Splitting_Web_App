@@ -1973,6 +1973,29 @@ input.switch:checked::after {
   border-radius: 10px;
   background: var(--paper);
 }
+.invite-qr-toggle {
+  border-top: 1px solid var(--rule);
+}
+/* Always dark-on-white, even in dark mode: inverted codes scan poorly on some
+   phones. The padding is the quiet zone scanners need around the code. */
+.invite-qr {
+  align-self: center;
+  width: min(100%, 232px);
+  padding: 14px;
+  border-radius: 10px;
+  background: #fff;
+  color: #111;
+}
+.invite-qr svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  fill: currentColor;
+}
+.invite-qr-hint {
+  margin: 0;
+  text-align: center;
+}
 .invite-code {
   font-family: var(--font-display);
   font-size: 2.1rem;

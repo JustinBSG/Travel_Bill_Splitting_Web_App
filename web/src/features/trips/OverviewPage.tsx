@@ -11,6 +11,7 @@ import { readableRate } from '../../lib/fx'
 import { HKD, ZERO } from '../../lib/money'
 import { hkdNets } from '../../lib/settlement'
 import { computeStats } from '../settlement/stats'
+import { InviteQr } from './InviteQr'
 import { useTripData } from './TripDataContext'
 import { WeatherBadge } from './WeatherBadge'
 import { durationText } from './tripText'
@@ -214,6 +215,7 @@ export function OverviewPage() {
                 </button>
               )}
             </div>
+            <InviteQr url={inviteUrl} />
           </div>
         ) : (
           <p className="muted">{t('overview.askAdmin')}</p>
