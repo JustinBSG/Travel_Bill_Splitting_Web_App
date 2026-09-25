@@ -66,12 +66,15 @@ export function buildPushMessage(n: NotificationRecord, language: string | null 
   const body = t.types[n.type]?.(vars) ?? ''
 
   const trip = n.trip_id ?? str(p.trip_id)
+  const expenseId = str(p.expense_id)
   const localDate = str(p.local_date)
   let url = '/notifications'
   if (trip) {
-    // The day's page, not the edit form; the app maps dates outside the trip to pre/post.
-    if ((n.type === 'expense_added' || n.type === 'expense_updated') && /^\d{4}-\d{2}-\d{2}$/.test(localDate)) {
-      url = `/trips/${trip}/${localDate}`
+    // The expense's day page with its row highlighted, not the edit form. The app
+    // re-resolves the day from ?expense (the expense may have moved since).
+    if ((n.type === 'expense_added' || n.type === 'expense_updated') && expenseId) {
+      const day = /^\d{4}-\d{2}-\d{2}$/.test(localDate) ? localDate : 'overview'
+      url = `/trips/${trip}/${day}?expense=${encodeURIComponent(expenseId)}`
     } else if (n.type === 'expense_deleted') {
       url = `/trips/${trip}/activity`
     } else {
