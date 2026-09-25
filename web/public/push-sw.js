@@ -21,9 +21,17 @@ self.addEventListener('push', (event) => {
   )
 })
 
+// Older send_push builds linked expense notices to the edit form
+// (/trips/<trip>/expense/<id>); open the trip at that expense instead. The app
+// finds its day and highlights it.
+function pushTarget(url) {
+  const m = /^\/trips\/([^/?#]+)\/expense\/([^/?#]+)$/.exec(url)
+  return m && m[2] !== 'new' ? `/trips/${m[1]}/overview?expense=${m[2]}` : url
+}
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const url = (event.notification.data && event.notification.data.url) || '/'
+  const url = pushTarget((event.notification.data && event.notification.data.url) || '/')
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((wins) => {
       for (const w of wins) {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, Navigate, useNavigate, useParams } from 'react-router'
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router'
 import { ExpensePage } from '../features/expenses/ExpensePage'
 import { BellButton } from '../features/notifications/BellButton'
 import { LanguageSwitch } from '../features/settings/LanguageSwitch'
@@ -41,6 +41,7 @@ export function TripShell() {
   const { t } = useTranslation()
   const fmt = useFmt()
   const { pageKey = 'overview' } = useParams()
+  const [params, setParams] = useSearchParams()
   const navigate = useNavigate()
   const toast = useToast()
   const data = useTripData()
@@ -58,6 +59,25 @@ export function TripShell() {
   const firstAlign = useRef(true)
   const [menuOpen, setMenuOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
+
+  // ?expense=<id> (notification links): show that expense's day and flash its row.
+  const flashId = params.get('expense')
+  const flashExpense = flashId ? data.expenses.find((e) => e.id === flashId) : undefined
+  const flashPage = flashExpense ? pageForLocalDate(flashExpense.local_date, trip) : null
+  // Drop the param once the row has flashed, so back/refresh doesn't replay it.
+  useEffect(() => {
+    if (!flashId) return
+    const id = window.setTimeout(() => {
+      setParams(
+        (p) => {
+          p.delete('expense')
+          return p
+        },
+        { replace: true },
+      )
+    }, 3000)
+    return () => window.clearTimeout(id)
+  }, [flashId, setParams])
 
   const go = useCallback(
     (key: PageKey) => navigate(`/trips/${trip.id}/${key}`, { replace: true }),
@@ -136,6 +156,9 @@ export function TripShell() {
     }
   }
 
+  if (flashId && flashPage && flashPage !== pageKey && pages.includes(flashPage)) {
+    return <Navigate to={`/trips/${trip.id}/${flashPage}?expense=${encodeURIComponent(flashId)}`} replace />
+  }
   if (index < 0) {
     // A date outside the trip (e.g. from a push link) lands on its pre/post page.
     const dated = isISODate(pageKey) ? pageForLocalDate(pageKey, trip) : null
@@ -221,7 +244,7 @@ export function TripShell() {
               ) : k === 'conclusion' ? (
                 <ConclusionPage />
               ) : (
-                <ExpensePage page={k} weather={weather?.get(k)} />
+                <ExpensePage page={k} weather={weather?.get(k)} highlight={i === index ? flashExpense?.id : undefined} />
               ))}
           </section>
         ))}

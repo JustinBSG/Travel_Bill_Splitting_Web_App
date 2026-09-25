@@ -13,7 +13,16 @@ import type { Weather } from '../trips/openMeteo'
 import { ExpenseRow } from './ExpenseRow'
 
 /** Pre-trip, each Day, Post-trip: a ledger for one page. */
-export function ExpensePage({ page, weather }: { page: ExpensePageKey; weather?: Weather | null }) {
+export function ExpensePage({
+  page,
+  weather,
+  highlight,
+}: {
+  page: ExpensePageKey
+  weather?: Weather | null
+  /** Expense id to scroll to and flash (from a notification link). */
+  highlight?: string
+}) {
   const { t } = useTranslation()
   const fmt = useFmt()
   const labels = usePageLabels()
@@ -85,6 +94,7 @@ export function ExpensePage({ page, weather }: { page: ExpensePageKey; weather?:
                 pageCurrency={pageCurrency}
                 pageTz={pageTz}
                 pinnedOn={isDay ? page : e.local_date}
+                highlighted={e.id === highlight}
               />
             ))}
           </ul>
@@ -99,7 +109,14 @@ export function ExpensePage({ page, weather }: { page: ExpensePageKey; weather?:
           </h3>
           <ul className="expense-list ledger">
             {single.map((e) => (
-              <ExpenseRow key={e.id} expense={e} page={page} pageCurrency={pageCurrency} pageTz={pageTz} />
+              <ExpenseRow
+                key={e.id}
+                expense={e}
+                page={page}
+                pageCurrency={pageCurrency}
+                pageTz={pageTz}
+                highlighted={e.id === highlight}
+              />
             ))}
           </ul>
         </section>

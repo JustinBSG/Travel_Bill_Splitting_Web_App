@@ -5,6 +5,15 @@ import { ErrorBox, PageHeader, Spinner } from '../../app/ui/common'
 import { useNotifications } from './NotificationsContext'
 import { describeNotification } from './notificationTypes'
 
+/** Expense notices open the expense's day with its row flashed; the rest open the trip. */
+function notificationPath(tripId: string, n: { type: string; payload: Record<string, unknown> | null }): string {
+  const expenseId = n.payload?.expense_id
+  if ((n.type === 'expense_added' || n.type === 'expense_updated') && typeof expenseId === 'string') {
+    return `/trips/${tripId}/overview?expense=${encodeURIComponent(expenseId)}`
+  }
+  return `/trips/${tripId}/overview`
+}
+
 export function NotificationsPage() {
   const { t } = useTranslation()
   const fmt = useFmt()
@@ -39,7 +48,7 @@ export function NotificationsPage() {
                   className={`list-row list-button ${n.read_at ? '' : 'unread'}`}
                   onClick={() => {
                     void markRead(n.id)
-                    if (n.trip_id) navigate(`/trips/${n.trip_id}/overview`)
+                    if (n.trip_id) navigate(notificationPath(n.trip_id, n))
                   }}
                 >
                   <span className="list-main">

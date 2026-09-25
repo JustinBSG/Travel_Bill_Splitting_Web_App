@@ -2028,6 +2028,26 @@ input.switch:checked::after {
 .expense-row:active {
   background: var(--sheet-2);
 }
+/* Opened from a notification: the row glows in the accent colour, then fades.
+   The side shadows carry the tint past the row's edge-to-edge text. */
+.expense-flash {
+  animation: expense-flash 2.6s ease-out;
+}
+@keyframes expense-flash {
+  0%,
+  35% {
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+    box-shadow:
+      -10px 0 0 color-mix(in srgb, var(--accent) 16%, transparent),
+      10px 0 0 color-mix(in srgb, var(--accent) 16%, transparent);
+  }
+  100% {
+    background: transparent;
+    box-shadow:
+      -10px 0 0 transparent,
+      10px 0 0 transparent;
+  }
+}
 .expense-time {
   display: flex;
   flex-direction: column;

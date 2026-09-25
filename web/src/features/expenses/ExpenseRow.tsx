@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { useFmt } from '../../app/useFmt'
@@ -19,10 +20,12 @@ interface Props {
   pageTz: string
   /** Date used for the multi-day "(Day X of N)" label when pinned. */
   pinnedOn?: ISODate
+  /** Scroll into view and flash once (opened from a notification). */
+  highlighted?: boolean
 }
 
 /** One ledger line: time | title, who paid, what it means for me | amounts. */
-export function ExpenseRow({ expense: e, page, pageCurrency, pageTz, pinnedOn }: Props) {
+export function ExpenseRow({ expense: e, page, pageCurrency, pageTz, pinnedOn, highlighted }: Props) {
   const { t } = useTranslation()
   const fmt = useFmt()
   const { trip, activeMembers, me, memberName, rateFor } = useTripData()
@@ -51,8 +54,20 @@ export function ExpenseRow({ expense: e, page, pageCurrency, pageTz, pinnedOn }:
 
   const pos = pinnedOn ? multiDayPosition(e, pinnedOn) : null
 
+  // Centre the row in its page's own vertical scroller. Not scrollIntoView: that
+  // would also scroll the horizontal day swiper.
+  const row = useRef<HTMLLIElement>(null)
+  useEffect(() => {
+    const el = row.current
+    const scroller = el?.closest<HTMLElement>('.swipe-page')
+    if (!highlighted || !el || !scroller) return
+    const r = el.getBoundingClientRect()
+    const s = scroller.getBoundingClientRect()
+    scroller.scrollTo({ top: scroller.scrollTop + r.top - s.top - (s.height - r.height) / 2, behavior: 'instant' })
+  }, [highlighted])
+
   return (
-    <li>
+    <li ref={row} className={highlighted ? 'expense-flash' : undefined}>
       <Link
         to={`/trips/${trip.id}/expense/${e.id}?page=${encodeURIComponent(page)}`}
         className={`expense-row${pinnedOn ? ' expense-row-pinned' : ''}`}
