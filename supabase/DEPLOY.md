@@ -187,7 +187,7 @@ npx supabase db push --project-ref <REF>
 ```
 If it stops at `pg_cron` or `pg_net`: enable them under **Database → Extensions**, then push again.
 
-Check it in the Dashboard: **Table Editor** shows 13 tables, **Storage** shows `trip-photos` (private),
+Check it in the Dashboard: **Table Editor** shows 14 tables, **Storage** shows `trip-photos` (private),
 and **Integrations → Cron** shows 3 jobs.
 
 ### D4. Generate this environment's secrets
