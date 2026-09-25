@@ -1,6 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router'
 import { FullPageSpinner } from '../../app/ui/common'
 import { NotificationsProvider } from '../notifications/NotificationsProvider'
+import { PushPrompt } from '../notifications/PushPrompt'
 import { useAuth } from './AuthContext'
 import { ProfileSetupPage } from './ProfileSetupPage'
 
@@ -19,6 +20,7 @@ export function RequireAuth() {
   return (
     <NotificationsProvider>
       <Outlet />
+      <PushPrompt />
     </NotificationsProvider>
   )
 }

@@ -460,6 +460,10 @@ const en = {
       placeholder_claimed: '{{actor}} claimed their place in {{trip}}',
       trip_locked: '{{trip}} was locked — the conclusion is final',
     },
+    promptTitle: 'Turn on notifications?',
+    promptBody: 'Get a push notification when someone adds or edits an expense that includes you, or records a repayment to you. You can change this any time in Settings.',
+    promptEnable: 'Turn on',
+    promptLater: 'Not now',
   },
   settings: {
     title: 'Settings',

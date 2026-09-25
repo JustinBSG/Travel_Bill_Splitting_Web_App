@@ -462,6 +462,10 @@ const zhHant: LocaleShape<typeof en> = {
       placeholder_claimed: '{{actor}} 認領了在 {{trip}} 的預留名字',
       trip_locked: '{{trip}} 已鎖定，結算為最終結果',
     },
+    promptTitle: '開啟通知？',
+    promptBody: '有人新增或修改包括你的開支，或記錄給你的還款時，會收到推送通知。你可隨時在設定中更改。',
+    promptEnable: '開啟',
+    promptLater: '暫時不要',
   },
   settings: {
     title: '設定',
